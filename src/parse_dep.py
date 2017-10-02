@@ -39,8 +39,10 @@ class parse_ini(object):
                 dep_list.extend(self.find_deps(_root, _section))
             else:
                 if inc != "False":
-                    dep_list.append(path_hdl + inc)
-
+                    _section = inc
+                    _root = root
+                    dep_list.extend(self.find_deps(_root, _section))
+        
         return (dep_list)    
         
     def parse_makefile(self, ini):
