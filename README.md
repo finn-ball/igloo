@@ -9,11 +9,11 @@ git clone https://github.com/finnball/igloo.git
 source source.sh
 igloo.py --help
 ```
-## Creating Projects
+# Creating Projects
 
 Creating projects involves abiding by the file structure and creating settings files.
 
-# Quick Project Build
+## Quick Project Build
 
 ```
 igloo.py create projects/blink/cfg/config.ini
