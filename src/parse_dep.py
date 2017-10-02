@@ -38,7 +38,7 @@ class parse_ini(object):
                 _root, _section = inc.split("/")
                 dep_list.extend(self.find_deps(_root, _section))
             else:
-                if inc != "False":
+                if inc != "None":
                     _section = inc
                     _root = root
                     dep_list.extend(self.find_deps(_root, _section))
