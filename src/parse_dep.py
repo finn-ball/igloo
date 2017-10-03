@@ -29,9 +29,9 @@ class parse_ini(object):
         
         dep_list.append(path_hdl + section)
         config.read(path_ini)
-        
+
         include = config.get(section, 'include')
-        include_list = re.split(',| ', include)
+        include_list = re.split(',| |, ', include)
         
         for inc in include_list:
             if "/" in inc:
