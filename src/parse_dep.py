@@ -72,6 +72,7 @@ class parse_ini(object):
             self._root = makefile_config.get('Project', 'Root')
             self._device = makefile_config.get('Project', 'Device')
             self._footprint = makefile_config.get('Project', 'Footprint')
+            self._board = makefile_config.get('Project', 'Board')
             self._top = makefile_config.get('Project', 'Top')
             self._pinmap = makefile_config.get('Project', 'Pinmap' )
 
@@ -116,6 +117,7 @@ BUILD        = ./build
 SCRIPTS      = ./scripts
 DEVICE       = %s
 FOOTPRINT    = %s
+BOARD        = %s
 TOP          = %s
 SIM          = %s
 FILES        = %s
@@ -123,14 +125,15 @@ FILES        = %s
 BLIF         = $(BUILD)/$(PROJ).blif
 ASC          = $(BUILD)/$(PROJ).asc
 BIN          = $(BUILD)/$(PROJ).bin
-PINMAP       = ./boards/$(DEVICE)$(FOOTPRINT)/%s\n""" % (self._time,
-                                                         self._name,
-                                                         self._device,
-                                                         self._footprint,
-                                                         (self._root + '/hdl/' + self._top + '.v'),
-                                                         (self._root + '/sim/' + self._top + '_tb.v'),
-                                                         (" ".join(self._files)),
-                                                         self._pinmap)
+PINMAP       = ./boards/$(BOARD)/%s\n""" % (self._time,
+                                            self._name,
+                                            self._device,
+                                            self._footprint,
+                                            self._board,
+                                            (self._root + '/hdl/' + self._top + '.v'),
+                                            (self._root + '/sim/' + self._top + '_tb.v'),
+                                            (" ".join(self._files)),
+                                            self._pinmap)
 
         makefile_bulk = """
 YOSYS_FLAGS    = -Q -c $(SCRIPTS)/yosys.tcl
