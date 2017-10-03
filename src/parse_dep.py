@@ -2,53 +2,66 @@ import os
 import re
 import datetime
 import ConfigParser
+from collections import OrderedDict
 
 class parse_ini(object):
 
-    def __init__(self):
-        return
+    def __init__(self, file_path):
+        ini_options = ["include"]
 
-    def get_top(self):
-        return self._top
+        self.parse_makefile(file_path)
 
-    def get_root(self):
-        return self._root
-
-    def set_files(self, files):
-        self._files = files
+        self.dep_map = self.flatten_ini_tree(self._root, (self._top + '.v'), 'deps', ini_options)
+        
+        self.set_files()
     
-    def find_deps(self, root, section):        
-        path_ini = root + '/cfg/dep.ini' 
+    def set_files(self):
+        l = []
+        for f in self.dep_map:
+            l.append(self.dep_map[f]["path"] + f)
+        
+        self._files = l
+    
+    def flatten_ini_tree(self, root, section, option, ini_options):        
+        config = ConfigParser.SafeConfigParser()
+        hdl_dir = root + '/hdl/'
+        ini_path = root + '/cfg/dep.ini'
+        options_dict = {}
+        return_dict = OrderedDict()
+        
+        if not os.path.exists(ini_path):
+            raise Exception('File does not exist: ', ini_path)
+        
+        config.read(ini_path)
 
-        if not os.path.exists(path_ini):
-            raise Exception('File does not exist: ', path_ini)
-        
-        dep_list = []
-        path_hdl = root + '/hdl/'
-        config = ConfigParser.ConfigParser()
-        
-        dep_list.append(path_hdl + section)
-        config.read(path_ini)
+        options_dict["path"] = hdl_dir
+        return_dict[section] = options_dict
 
-        try:
-            include = config.get(section, 'include')
-        except:
-            msg = "Could not parse config for: " + section + " located in " + root + "/ \n"
-            msg += "Hint: Every included file needs an include list, even if it's 'include = None'"
-            raise Exception(msg)
-        include_list = re.split(', | |,', include)
+        if (not config.has_section(section)):
+            return return_dict
+
+        for opt in ini_options:
+            if (config.has_option(section, opt)):
+                options_dict[opt] = config.get(section, opt)
+
+        return_dict[section] = options_dict
         
-        for inc in include_list:
-            if "/" in inc:
-                _root, _section = inc.split("/")
-                dep_list.extend(self.find_deps(_root, _section))
+        if (not config.has_option(section, option)):
+            return return_dict
+
+        deps = re.split(', | |,', config.get(section, option))
+        
+        for dep in deps:
+            if "/" in dep:
+                _root, _section = dep.split("/")
+                return_dict.update(self.flatten_ini_tree(_root, _section, option, ini_options))
             else:
-                if inc != "None":
-                    _section = inc
-                    _root = root
-                    dep_list.extend(self.find_deps(_root, _section))
+                
+                _section = dep
+                _root = root
+                return_dict.update(self.flatten_ini_tree(_root, _section, option, ini_options))
         
-        return (dep_list)    
+        return return_dict
         
     def parse_makefile(self, ini):
         makefile_config = ConfigParser.ConfigParser()
@@ -68,8 +81,15 @@ class parse_ini(object):
 
     def create_yosys(self):
         yosys =  ''
-        for f in self._files:
-            yosys += ('yosys read_verilog %s\n' % f)
+        yosys_includes = ''
+
+        for f in self.dep_map:
+            if "include" in self.dep_map[f]:
+                incs = re.split(', | |,', self.dep_map[f]['include'])
+                for inc in incs:
+                    yosys_includes += '-I%s' % inc
+                    
+            yosys += ('yosys read_verilog %s %s\n' % (yosys_includes , self.dep_map[f]['path'] + f))
             
         yosys += ('yosys synth_ice40 -top %s -blif ./build/%s.blif\n') % (self._top, self._name)
             
@@ -77,6 +97,7 @@ class parse_ini(object):
 
     def create_iverilog(self):
         iverilog =  ''
+
         for f in self._files:
             iverilog += ('-l %s\n' % f)
         
