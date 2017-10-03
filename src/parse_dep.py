@@ -30,8 +30,13 @@ class parse_ini(object):
         dep_list.append(path_hdl + section)
         config.read(path_ini)
 
-        include = config.get(section, 'include')
-        include_list = re.split(',| |, ', include)
+        try:
+            include = config.get(section, 'include')
+        except:
+            msg = "Could not parse config for: " + section + " located in " + root + "/ \n"
+            msg += "Hint: Every included file needs an include list, even if it's 'include = None'"
+            raise Exception(msg)
+        include_list = re.split(', | |,', include)
         
         for inc in include_list:
             if "/" in inc:
