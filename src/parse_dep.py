@@ -101,8 +101,13 @@ class parse_ini(object):
 
         for f in self._files:
             iverilog += ('-l %s\n' % f)
-        
+
         iverilog += '-l /usr/local/share/yosys/ice40/cells_sim.v\n'
+        for f in self.dep_map:
+            if "include" in self.dep_map[f]:
+                incs = re.split(', | |,', self.dep_map[f]['include'])
+                for inc in incs:
+                    iverilog += '+incdir+' + inc + '\n'
         iverilog += '+libext+.v+.vl+.vh\n'
         iverilog += (self._root + '/sim/' + self._top + '_tb.v\n')
         return iverilog
