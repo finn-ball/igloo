@@ -9,7 +9,7 @@ module top_tb;
 	$dumpfile("./build/iverilog/uart.vcd");
 	$dumpvars(0,top_tb);
 	
-	# 500 $finish;
+	# 100000 $finish;
 	
      end
 
