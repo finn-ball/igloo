@@ -15,7 +15,7 @@ class create(object):
         ini = os.path.abspath(kwargs['file'])
         if not os.path.exists(ini):
             raise Exception('File does not exist: ', makefile_ini)
-
+        
         self.parse_ini = parse_ini(ini)
         self.run()
         
@@ -26,7 +26,7 @@ class create(object):
         
     def write_makefile(self):
         print("Creating Makefile from provided settings...")
-        
+
         makefile = open("Makefile", "w")
         try:
             makefile.write(self.parse_ini.create_makefile())
@@ -37,7 +37,10 @@ class create(object):
 
     def write_yosys(self):
         print("Creating YOSYS script from provided settings...")
-        
+
+        if not os.path.exists("./scripts"):
+            os.makedirs("./scripts")
+
         yosys = open("./scripts/yosys.tcl", "w")
         try:
             yosys.write(self.parse_ini.create_yosys())
@@ -48,6 +51,9 @@ class create(object):
         
     def write_iverilog(self):
         print("Creating iverilog script from provided settings...")
+        
+        if not os.path.exists("./scripts"):
+            os.makedirs("./scripts")
         
         iverilog = open("./scripts/iverilog.cf", "w")
         try:
