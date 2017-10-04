@@ -1,6 +1,6 @@
 *~
 *.pyc
-#*
+*#*
 scripts
 build
 Makefile
