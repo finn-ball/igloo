@@ -16,11 +16,18 @@ class parse_ini(object):
         self.set_files()
     
     def set_files(self):
-        l = []
-        for f in self.dep_map:
-            l.append(self.dep_map[f]["path"] + f)
+        file_l = []
+        incs_l = []
         
-        self._files = l
+        for f in self.dep_map:
+            file_l.append(self.dep_map[f]["path"] + f)
+            if "include" in self.dep_map[f]:
+                incs = re.split(', | |,', self.dep_map[f]['include'])
+                for inc in incs:
+                    incs_l.append(inc)
+                    
+        self._files = file_l
+        self._includes = list(OrderedDict.fromkeys(incs_l))
     
     def flatten_ini_tree(self, root, section, option, ini_options):        
         config = ConfigParser.SafeConfigParser()
@@ -82,14 +89,14 @@ class parse_ini(object):
 
     def create_yosys(self):
         yosys =  ''
-        yosys_includes = ''
-
+        
         for f in self.dep_map:
+            yosys_includes = ''
             if "include" in self.dep_map[f]:
                 incs = re.split(', | |,', self.dep_map[f]['include'])
                 for inc in incs:
                     yosys_includes += '-I%s' % inc
-                    
+                
             yosys += ('yosys read_verilog %s %s\n' % (yosys_includes , self.dep_map[f]['path'] + f))
             
         yosys += ('yosys synth_ice40 -top %s -blif ./build/%s.blif\n') % (self._top, self._name)
@@ -104,14 +111,9 @@ class parse_ini(object):
             iverilog += ('-l %s\n' % f)
 
         iverilog += '-l /usr/local/share/yosys/ice40/cells_sim.v\n'
-        for f in self.dep_map:
-            if "include" in self.dep_map[f]:
-                incs = re.split(', | |,', self.dep_map[f]['include'])
-                for inc in incs:
-                    l = ('+incdir+' + inc + '\n')
-                    inc_list.append(l)
-                    
-        iverilog += iverilog.join(list(OrderedDict.fromkeys(inc_list)))
+        for i in self._includes:
+            iverilog += '+incdir+' + i + '\n'
+
         iverilog += '+libext+.v+.vl+.vh\n'
         iverilog += (self._root + '/sim/' + self._top + '_tb.v\n')
         return iverilog
@@ -129,6 +131,7 @@ FOOTPRINT    = %s
 BOARD        = %s
 TOP          = %s
 SIM          = %s
+INCLUDES     = %s
 FILES        = %s
 
 BLIF         = $(BUILD)/$(PROJ).blif
@@ -141,6 +144,7 @@ PINMAP       = ./boards/$(BOARD)/%s\n""" % (self._time,
                                             self._board,
                                             (self._root + '/hdl/' + self._top + '.v'),
                                             (self._root + '/sim/' + self._top + '_tb.v'),
+                                            (" ".join(self._includes)),
                                             (" ".join(self._files)),
                                             self._pinmap)
 
@@ -177,6 +181,14 @@ iverilog_monitor:
 	-@make iverilog
 	@echo "Files watched: " $(SIM) $(FILES)
 	@while [[ 1 ]]; do inotifywait -e modify $(SIM) $(FILES); make iverilog; done
+
+gtkwave: iverilog
+	vvp $(VVP)
+
+gtkwave_monitor:
+	-@make gtkwave
+	@echo "Files watched: " $(SIM) $(FILES)
+	@while [[ 1 ]]; do inotifywait -e modify $(SIM) $(FILES); make gtkwave; done
 
 clean:
 	rm -rf $(BUILD)/* """
