@@ -6,6 +6,7 @@ Make sure you have the [IceStorm](http://www.clifford.at/icestorm/) toolset inst
 
 ```
 git clone https://github.com/finnball/igloo.git
+cd igloo
 source source.sh
 igloo.py --help
 ```
