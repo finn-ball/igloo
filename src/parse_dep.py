@@ -98,6 +98,7 @@ class parse_ini(object):
 
     def create_iverilog(self):
         iverilog =  ''
+        inc_list = []
 
         for f in self._files:
             iverilog += ('-l %s\n' % f)
@@ -107,7 +108,10 @@ class parse_ini(object):
             if "include" in self.dep_map[f]:
                 incs = re.split(', | |,', self.dep_map[f]['include'])
                 for inc in incs:
-                    iverilog += '+incdir+' + inc + '\n'
+                    l = ('+incdir+' + inc + '\n')
+                    inc_list.append(l)
+                    
+        iverilog += iverilog.join(list(OrderedDict.fromkeys(inc_list)))
         iverilog += '+libext+.v+.vl+.vh\n'
         iverilog += (self._root + '/sim/' + self._top + '_tb.v\n')
         return iverilog
