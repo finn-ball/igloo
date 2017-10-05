@@ -7,16 +7,25 @@ module uart_ctrl(
 		 output 			  tx,
 		 output 			  tx_v
 		 );
-   
-   localparam ST_IDLE  = 3'd0;
-   localparam ST_START = 3'd1;
-   localparam ST_DATA  = 3'd2;
-   localparam ST_DONE  = 3'd3;
-   
-   reg [2:0] 					   state = ST_IDLE;
-   reg [2:0] 					   tx_ctr = 0;
 
-   reg [`UART_DATA_WIDTH - 1 : 0] 		   s_rx = 0;
+   function myF;
+      input 					  a,b,c,d;
+      begin
+	 myF = (a + b + c + d);
+      end
+   endfunction
+   
+   localparam ST_IDLE   = 3'd0;
+   localparam ST_START  = 3'd1;
+   localparam ST_DATA   = 3'd2;
+   localparam ST_STOP   = 3'd3;
+   
+   reg [2:0] 					  state = ST_IDLE;
+   reg [2:0] 					  tx_ctr = 0;
+   
+   reg [`UART_DATA_WIDTH - 1 : 0] 		  s_rx = 0;
+   reg 						  s_tx = 1;
+   
    
    always @ (posedge clk_i)
      begin
@@ -34,10 +43,10 @@ module uart_ctrl(
 	  ST_DATA :
 	    if (tx_ctr == 7)
 	      begin
-		 state <= ST_DONE;
+		 state <= ST_STOP;
 	      end
-	  
-	  ST_DONE :
+
+	  ST_STOP :
 	    state <= ST_IDLE;
 	  
 	endcase
@@ -68,6 +77,24 @@ module uart_ctrl(
      end
 
    assign tx_v = (state == ST_DATA) ? 1 : 0;
-   assign tx = s_rx[0];
+
+   always @*
+     begin
+	if (state == ST_START)
+	  begin
+	     s_tx = 0;
+	  end
+	else if (state == ST_DATA)
+	  begin
+	     s_tx = s_rx[0];
+	  end
+	else
+	  begin
+	     s_tx = 1;
+	  end
+     end // always @ *
+   
+
+   assign tx = s_tx;
    
 endmodule // uart_ctrl

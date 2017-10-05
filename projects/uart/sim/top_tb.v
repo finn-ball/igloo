@@ -21,7 +21,7 @@ module top_tb;
    top tb (
 	   .ice_clk_i (clk_i),
 	   .led_o (led_o),
-	   .rs232_tx_o(RS232_TX_o)
+	   .rs232_tx_o(rs232_tx_o)
 	   );
     
 

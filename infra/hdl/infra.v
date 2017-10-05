@@ -9,6 +9,7 @@ module infra(
    wire 		  clk_96;
    wire 		  clk_uart;
    wire 		  clk_led;
+   wire 		  uart_tx_v;		  
 
    clks #(
 	  .PLL_EN (1),
@@ -38,7 +39,7 @@ module infra(
    
    uart_ctrl uart_ctrl(
 		       .clk_i (clk_uart),
-		       .rx (8'b01101001),
+		       .rx ("!"),
 		       .rx_v (1'b1),
 		       .tx (rs232_tx_o),
 		       .tx_v (uart_tx_v)
