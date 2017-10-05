@@ -7,13 +7,6 @@ module uart_ctrl(
 		 output 			  tx,
 		 output 			  tx_v
 		 );
-
-   function myF;
-      input 					  a,b,c,d;
-      begin
-	 myF = (a + b + c + d);
-      end
-   endfunction
    
    localparam ST_IDLE   = 3'd0;
    localparam ST_START  = 3'd1;
