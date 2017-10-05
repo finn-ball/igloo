@@ -81,7 +81,6 @@ class parse_ini(object):
             self._footprint = makefile_config.get('Project', 'Footprint')
             self._board = makefile_config.get('Project', 'Board')
             self._top = makefile_config.get('Project', 'Top')
-            self._pinmap = makefile_config.get('Project', 'Pinmap' )
 
         except:
             raise Exception("Settings file could not be parsed")
@@ -137,7 +136,7 @@ FILES        = %s
 BLIF         = $(BUILD)/$(PROJ).blif
 ASC          = $(BUILD)/$(PROJ).asc
 BIN          = $(BUILD)/$(PROJ).bin
-PINMAP       = ./boards/$(BOARD)/%s\n""" % (self._time,
+PINMAP       = ./boards/$(BOARD)/%s.pcf\n""" % (self._time,
                                             self._name,
                                             self._device,
                                             self._footprint,
@@ -146,7 +145,7 @@ PINMAP       = ./boards/$(BOARD)/%s\n""" % (self._time,
                                             (self._root + '/sim/' + self._top + '_tb.v'),
                                             (" ".join(self._includes)),
                                             (" ".join(self._files)),
-                                            self._pinmap)
+                                            self._name)
 
         makefile_bulk = """
 YOSYS_FLAGS    = -Q -c $(SCRIPTS)/yosys.tcl
