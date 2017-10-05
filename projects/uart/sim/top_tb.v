@@ -3,6 +3,8 @@ module top_tb;
    reg clk_i = 0;
    wire [7:0] led_o;
    wire       rs232_tx_o;
+   wire       rs232_rx_i = 1'b1;
+   
    
    initial
      begin
@@ -20,6 +22,7 @@ module top_tb;
    
    top tb (
 	   .ice_clk_i (clk_i),
+	   .rs232_rx_i(rs232_rx_i),
 	   .led_o (led_o),
 	   .rs232_tx_o(rs232_tx_o)
 	   );
