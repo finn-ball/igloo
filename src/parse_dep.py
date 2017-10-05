@@ -160,14 +160,14 @@ IVERILOG_FLAGS = -Wall -c $(SCRIPTS)/iverilog.cf -o $(VVP) #-Wfloating-nets
 all: $(BIN)
 
 $(BLIF): $(FILES) 
-	mkdir -p $(BUILD)
-	yosys $(YOSYS_FLAGS) &> $(BUILD)/yosys.log
+	mkdir -p $(BUILD)/logs
+	yosys $(YOSYS_FLAGS) &> $(BUILD)/logs/yosys.log
 
 $(ASC): $(BLIF)
-	arachne-pnr $(ARACHNE_FLAGS) &> $(BUILD)/archane-pnr.log
+	arachne-pnr $(ARACHNE_FLAGS) &> $(BUILD)/logs/archane-pnr.log
 
 $(BIN): $(ASC)
-	icepack $(ASC) $(BIN) &> $(BUILD)/icepack.log
+	icepack $(ASC) $(BIN) &> $(BUILD)/logs/icepack.log
 
 burn:
 	iceprog $(BIN)
