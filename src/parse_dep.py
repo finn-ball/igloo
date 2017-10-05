@@ -96,7 +96,7 @@ class parse_ini(object):
                 for inc in incs:
                     yosys_includes += '-I%s' % inc
                 
-            yosys += ('yosys read_verilog %s %s\n' % (yosys_includes , self.dep_map[f]['path'] + f))
+            yosys += ('yosys read_verilog -sv %s %s\n' % (yosys_includes , self.dep_map[f]['path'] + f))
             
         yosys += ('yosys synth_ice40 -top %s -blif ./build/%s.blif\n') % (self._top, self._name)
             
