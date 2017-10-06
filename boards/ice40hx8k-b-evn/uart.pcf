@@ -18,10 +18,10 @@ set_io led_o[6] B3
 set_io led_o[7] C3
 
 ### Reset
-#set_io rstn_i C16 -pullup yes
+set_io rstn_i C16
 
 ### UART (FTDI Channel B)
-#set_io rs232_rx_i B10
+set_io rs232_rx_i  B10
 set_io rs232_tx_o  B12
 #set_io RTSn       B13
 #set_io CTSn       A15

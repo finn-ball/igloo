@@ -88,7 +88,7 @@ module uart_tx(
      end // always @ *
    
    
-   assign tx = s_tx;
+   assign tx_o = s_tx;
 
    
 endmodule // uart_tx

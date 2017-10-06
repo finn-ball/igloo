@@ -128,8 +128,8 @@ module fifo_(
    assign _waddr = { {(11 - ADDR_WIDTH){1'b0}}, {waddr} };
    assign _raddr = { {(11 - ADDR_WIDTH){1'b0}}, {raddr} };
    
-   assign empty = (~|ctr) ? 1 : 0;
-   assign full = (&ctr) ? 1 : 0;
+   assign empty = (~|ctr);
+   assign full = (&ctr);
    
    always @(w_clk)
      begin
