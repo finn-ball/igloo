@@ -33,6 +33,8 @@ module fifo(
 				 .d(_d),
 				 .re(re),
 				 .q(_q),
+				 .empty(empty),
+				 .full(full),
 				 .mask(mask) // only masked option
 				 );
 	   
@@ -51,6 +53,8 @@ module fifo(
 			       .d(_d),
 			       .re(re),
 			       .q(_q),
+			       .empty(empty),
+			       .full(full),
 			       .mask(16'b0)
 			       );
 	   
@@ -69,6 +73,8 @@ module fifo(
 				.d(_d),
 				.re(re),
 				.q(_q),
+				.empty(empty),
+				.full(full),
 				.mask(16'b0)
 				);
 
@@ -87,6 +93,8 @@ module fifo(
 				.d(_d),
 				.re(re),
 				.q(_q),
+				.empty(empty),
+				.full(full),
 				.mask(16'b0)
 				);
 
