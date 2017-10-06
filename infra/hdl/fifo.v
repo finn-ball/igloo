@@ -4,19 +4,124 @@ module fifo(
 	    input 			we,
 	    input [DATA_WIDTH - 1 : 0] 	d,
 	    input 			re,
+	    input [15 :0] 		mask,
 	    output [DATA_WIDTH - 1 : 0] q,
 	    output 			empty,
 	    output 			full
 	    );
+   
+   
+   parameter DATA_WIDTH = 1;
 
+   wire [15:0] 				_d, _q;
 
-   parameter DATA_WIDTH = 8;
-   parameter ADDR_WIDTH = 9;
+   assign _d = { {(16 - DATA_WIDTH){1'b0}}, {d} };
+   assign q =  _q[DATA_WIDTH - 1 : 0];
+   
+   generate
+      
+      if (16 >= DATA_WIDTH > 8)
+	begin
+	   	   
+	   fifo_#(
+		  .MODE(0),
+		  .ADDR_WIDTH(8)
+		  ) fifo_256x16_(
+				 .w_clk(w_clk),
+				 .r_clk(r_clk),
+				 .we(we),
+				 .d(_d),
+				 .re(re),
+				 .q(_q),
+				 .mask(mask) // only masked option
+				 );
+	   
+	end // if (16 >= DATA_WIDTH > 8)
+      
+      else if ( 8 >= DATA_WIDTH > 4)
+	begin
+	   
+	   fifo_#(
+		  .MODE(1),
+		  .ADDR_WIDTH(9)
+		  ) fifo_512x8(
+			       .w_clk(w_clk),
+			       .r_clk(r_clk),
+			       .we(we),
+			       .d(_d),
+			       .re(re),
+			       .q(_q),
+			       .mask(16'b0)
+			       );
+	   
+	end // if ( 8 >= DATA_WIDTH > 4)
+      
+      else if ( 4 >= DATA_WIDTH > 2)
+	begin
+	   
+	   fifo_#(
+		  .MODE(2),
+		  .ADDR_WIDTH(10)
+		  ) fifo_1024x4(
+				.w_clk(w_clk),
+				.r_clk(r_clk),
+				.we(we),
+				.d(_d),
+				.re(re),
+				.q(_q),
+				.mask(16'b0)
+				);
 
-   reg [ADDR_WIDTH - 1 : 0] 		waddr =0, raddr = 0, ctr = 0;
+	end // if ( 4 >= DATA_WIDTH > 2)
+      
+      else if ( 2 >= DATA_WIDTH > 0)
+	begin
+	   
+	   fifo_#(
+		  .MODE(3),
+		  .ADDR_WIDTH(11)
+		  ) fifo_2048x2(
+				.w_clk(w_clk),
+				.r_clk(r_clk),
+				.we(we),
+				.d(_d),
+				.re(re),
+				.q(_q),
+				.mask(16'b0)
+				);
 
-   assign empty = (ctr == 0) ? 1 : 0;
-   assign full = (& ctr) ? 1 : 0;
+	end // if ( 2 >= DATA_WIDTH > 0)
+
+   endgenerate
+   
+endmodule // fifo
+
+module fifo_(
+	     input 			 w_clk,
+	     input 			 r_clk,
+	     input 			 we,
+	     input [DATA_WIDTH - 1 : 0]  d,
+	     input 			 re,
+	     input [DATA_WIDTH - 1 :0] 	 mask,
+	     output [DATA_WIDTH - 1 : 0] q,
+	     output 			 empty,
+	     output 			 full
+	    );
+   
+   parameter MODE = 0;
+   parameter ADDR_WIDTH = 0;
+
+   localparam DATA_WIDTH = 16;
+   localparam DEPTH = 1 << (ADDR_WIDTH);
+   
+   reg [ADDR_WIDTH - 1 : 0] 		 waddr = 0, raddr = 0, ctr = 0;
+   reg [15:0] 				 _waddr, _raddr;
+
+   assign _waddr = { {(11 - ADDR_WIDTH){1'b0}}, {waddr} };
+   assign _raddr = { {(11 - ADDR_WIDTH){1'b0}}, {raddr} };
+   
+   assign empty = (~|ctr) ? 1 : 0;
+   assign full = (&ctr) ? 1 : 0;
    
    always @(w_clk)
      begin
@@ -48,19 +153,21 @@ module fifo(
   
    
    SB_RAM40_4K #(
-		 .WRITE_MODE(1'b1),
-		 .READ_MODE(1'b1)
+		 .WRITE_MODE(MODE),
+		 .READ_MODE(MODE)
 		 ) bram (
 			 .RDATA(q),
-			 .RADDR(raddr),
+			 .RADDR(_raddr),
 			 .RCLK(r_clk),
 			 .RCLKE(1'b1),
 			 .RE(re),
-			 .WADDR(waddr),
+			 .WADDR(_waddr),
 			 .WCLK(w_clk),
 			 .WCLKE(1'b1),
 			 .WDATA(d),
-			 .WE(1'b1)
+			 .WE(1'b1),
+			 .MASK(mask)
 			 );
    
-endmodule // fifo
+endmodule // fifo_
+
