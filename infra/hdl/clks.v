@@ -21,7 +21,7 @@ module clks(
    
    reg 		   s_clk_o = 0;
    wire 	   pll_clk_o;
-   reg [31:0] 	   ctr = 0;
+   reg [$clog2(T) - 1 : 0] ctr = 0;
    
    generate
       if (GBUFF_EN == 1)
@@ -68,10 +68,10 @@ module clks(
 	begin: CTR
 	   always @ (posedge clk_i)
 	     begin
-		if (ctr == (T - 1))
+		if (ctr == T - 1)
 		  begin
-		     s_clk_o <= ~s_clk_o;
 		     ctr <= 0;
+		     s_clk_o <= ~s_clk_o;
 		  end
 		else
 		  begin
