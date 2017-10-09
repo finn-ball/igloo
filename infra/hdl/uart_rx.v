@@ -35,7 +35,7 @@ module uart_rx(
    reg [DATA_LENGTH - 1 : 0] 		     s_tx_o = 0;
    
    assign tx_o = s_tx_o;
-   assign tx_o_v = state == ST_STOP & rx_vote;
+   assign tx_o_v = state == ST_STOP & rx_vote & ctr_sample == SAMPLE_UPPER;
 
    always @ (posedge clk_i)
      begin
