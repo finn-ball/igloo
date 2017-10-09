@@ -20,7 +20,7 @@ module fifo(
    
    generate
       
-      if (16 >= DATA_WIDTH > 8)
+      if (DATA_WIDTH <= 16 & DATA_WIDTH > 8)
 	begin
 	   	   
 	   fifo_#(
@@ -40,7 +40,7 @@ module fifo(
 	   
 	end // if (16 >= DATA_WIDTH > 8)
       
-      else if ( 8 >= DATA_WIDTH > 4)
+      else if ( DATA_WIDTH <= 8 & DATA_WIDTH > 4)
 	begin
 	   
 	   fifo_#(
@@ -60,7 +60,7 @@ module fifo(
 	   
 	end // if ( 8 >= DATA_WIDTH > 4)
       
-      else if ( 4 >= DATA_WIDTH > 2)
+      else if ( DATA_WIDTH <= 4 & DATA_WIDTH > 2)
 	begin
 	   
 	   fifo_#(
@@ -80,7 +80,7 @@ module fifo(
 
 	end // if ( 4 >= DATA_WIDTH > 2)
       
-      else if ( 2 >= DATA_WIDTH > 0)
+      else if ( DATA_WIDTH <= 2 & DATA_WIDTH > 0)
 	begin
 	   
 	   fifo_#(
@@ -99,7 +99,7 @@ module fifo(
 				);
 
 	end // if ( 2 >= DATA_WIDTH > 0)
-
+      
    endgenerate
    
 endmodule // fifo
@@ -118,12 +118,12 @@ module fifo_(
    
    parameter MODE = 0;
    parameter ADDR_WIDTH = 0;
-
+   
    localparam DATA_WIDTH = 16;
    localparam DEPTH = 1 << (ADDR_WIDTH);
    
    reg [ADDR_WIDTH - 1 : 0] 		 waddr = 0, raddr = 0, ctr = 0;
-   reg [15:0] 				 _waddr, _raddr;
+   wire [10 : 0] 			 _waddr, _raddr;
 
    assign _waddr = { {(11 - ADDR_WIDTH){1'b0}}, {waddr} };
    assign _raddr = { {(11 - ADDR_WIDTH){1'b0}}, {raddr} };
