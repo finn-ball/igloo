@@ -149,11 +149,11 @@ module fifo_(
 
    always @(we | re)
      begin
-	if (we & ~re & ~full)
+	if (we & ~re)
 	  begin
 	     ctr <= ctr + 1;
 	  end
-	else if (~we & re & ~full)
+	else if (~we & re)
 	  begin
 	     ctr <= ctr - 1;
 	  end;	
