@@ -2,10 +2,18 @@
 
  `define UART_VH
 
- `define UART_RX_SAMPLE_RATE 16 // NOTE, make it a power of 2
- `define UART_CLK_RX_PERIOD 625 
- `define UART_CLK_TX_PERIOD 625
+ `define CLK_I_FREQ 12000000
 
- `define UART_DATA_WIDTH 8
+ `define UART_BAUD_RATE 9600
+ `define UART_CLK_RX_FREQ  `CLK_I_FREQ / `UART_BAUD_RATE 
+ `define UART_CLK_TX_FREQ  `CLK_I_FREQ / `UART_BAUD_RATE
+
+ `define UART_RX_SAMPLE_RATE   16
+ `define UART_RX_SAMPLE_UPPER  10
+ `define UART_RX_SAMPLE_MID    8
+ `define UART_RX_SAMPLE_LOWER  6
+
+ `define UART_PACKET_LENGTH 10
+ `define UART_DATA_LENGTH 8
 
 `endif

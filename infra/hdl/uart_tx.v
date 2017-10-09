@@ -1,11 +1,11 @@
 `include "uart.vh"
 
 module uart_tx(
-	       input 				clk_i,
-	       input [`UART_DATA_WIDTH - 1 : 0] rx_i,
-	       input 				rx_i_v, 
-	       output 				tx_o,
-	       output 				tx_o_v
+	       input 				 clk_i,
+	       input [`UART_DATA_LENGTH - 1 : 0] rx_i,
+	       input 				 rx_i_v, 
+	       output 				 tx_o,
+	       output 				 tx_o_v
 	       );
 
    localparam ST_IDLE   = 3'd0;
@@ -16,7 +16,7 @@ module uart_tx(
    reg [2:0] 					  state = ST_IDLE;
    reg [2:0] 					  tx_ctr = 0;
    
-   reg [`UART_DATA_WIDTH - 1 : 0] 		  s_rx = 0;
+   reg [`UART_DATA_LENGTH - 1 : 0] 		  s_rx = 0;
    reg 						  s_tx = 1;
    
    
