@@ -84,6 +84,18 @@ class parse_ini(object):
 
         except:
             raise Exception("Settings file could not be parsed")
+
+        self._device_family = ''
+        print self._device
+        
+        if (self._device == 'lp384'):
+            self._device_family = "384"
+            
+        elif (self._device == 'lp1k' or self._device == 'hx1k'):
+            self._device_family = "1k"
+            
+        elif (self._device == 'lp8k' or self._device == 'hx8k'):
+            self._device_family = "8k"
         
 
     def create_yosys(self):
@@ -122,34 +134,38 @@ class parse_ini(object):
         makefile_constants ="""%s
 SHELL:=/bin/bash
 
-PROJ         = %s
-BUILD        = ./build
-SCRIPTS      = ./scripts
-DEVICE       = %s
-FOOTPRINT    = %s
-BOARD        = %s
-TOP          = %s
-SIM          = %s
-INCLUDES     = %s
-FILES        = %s
+PROJ          = %s
+BUILD         = ./build
+SCRIPTS       = ./scripts
+DEVICE_FAMILY = %s
+DEVICE        = %s
+FOOTPRINT     = %s
+BOARD         = %s
+TOP           = %s
+SIM           = %s
+INCLUDES      = %s
+FILES         = %s
 
-BLIF         = $(BUILD)/$(PROJ).blif
-ASC          = $(BUILD)/$(PROJ).asc
-BIN          = $(BUILD)/$(PROJ).bin
-PINMAP       = ./boards/$(BOARD)/%s.pcf\n""" % (self._time,
-                                            self._name,
-                                            self._device,
-                                            self._footprint,
-                                            self._board,
-                                            (self._root + '/hdl/' + self._top + '.v'),
-                                            (self._root + '/sim/' + self._top + '_tb.v'),
-                                            (" ".join(self._includes)),
-                                            (" ".join(self._files)),
-                                            self._name)
+BLIF          = $(BUILD)/$(PROJ).blif
+ASC           = $(BUILD)/$(PROJ).asc
+BIN           = $(BUILD)/$(PROJ).bin
+PINMAP        = ./boards/$(BOARD)/%s.pcf\n""" % (self._time,
+                                                 self._name,
+                                                 self._device_family,
+                                                 self._device,
+                                                 self._footprint,
+                                                 self._board,
+                                                 (self._root + '/hdl/' + self._top + '.v'),
+                                                 (self._root + '/sim/' + self._top + '_tb.v'),
+                                                 (" ".join(self._includes)),
+                                                 (" ".join(self._files)),
+                                                 self._name)
 
         makefile_bulk = """
 YOSYS_FLAGS    = -Q -c $(SCRIPTS)/yosys.tcl
-ARACHNE_FLAGS  = -d $(DEVICE) -P $(FOOTPRINT) -o $(ASC) -p $(PINMAP) $(BLIF)
+ARACHNE_FLAGS  = -d $(DEVICE_FAMILY) -P $(FOOTPRINT) -o $(ASC) -p $(PINMAP) $(BLIF)
+
+ICETIME_FLAGS  = -mit -d $(DEVICE) -p $(PINMAP) 
 
 IVERILOG_BUILD = $(BUILD)/iverilog
 VVP            = $(IVERILOG_BUILD)/$(PROJ).vvp
@@ -170,7 +186,10 @@ $(BIN): $(ASC)
 	icepack $(ASC) $(BIN) &> $(BUILD)/logs/icepack.log
 
 burn:
-	iceprog $(BIN)
+	iceprog $(BIN) &> $(BUILD)/logs/icetime.log
+
+time: $(ASC)
+	icetime $(ICETIME_FLAGS) $(ASC)
 
 iverilog: $(SIM) $(FILES)
 	mkdir -p $(IVERILOG_BUILD)
