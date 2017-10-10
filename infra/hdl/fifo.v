@@ -23,6 +23,7 @@ module fifo(
 	begin
 
 	   assign _d = { {(16 - DATA_WIDTH){1'b0}}, {d} };
+	   assign q = { {(16 - DATA_WIDTH){1'b0}}, {q} };
 	   
 	   fifo_#(
 		  .MODE(0),
@@ -54,7 +55,7 @@ module fifo(
 		     assign q[i] = _q[i * 2];
 		  end
 	     end
-	   
+
 	   fifo_#(
 		  .MODE(1),
 		  .ADDR_WIDTH(9)
@@ -163,15 +164,19 @@ module fifo_(
    localparam DEPTH = 1 << (ADDR_WIDTH);
    
    reg [ADDR_WIDTH - 1 : 0] 		 waddr = 0, raddr = 0, ctr = 0;
+   
    wire [10 : 0] 			 _waddr, _raddr;
+   
+   assign _waddr = { {(11 - ADDR_WIDTH){1'b0}}, {waddr} };
+   assign _raddr = { {(11 - ADDR_WIDTH){1'b0}}, {raddr} };
 
    assign _waddr = { {(11 - ADDR_WIDTH){1'b0}}, {waddr} };
    assign _raddr = { {(11 - ADDR_WIDTH){1'b0}}, {raddr} };
    
-   assign empty = (~|ctr);
-   assign full = (&ctr);
+   assign empty = (raddr == waddr);
+   //assign full = 1'b0;//(&ctr);
    
-   always @(w_clk)
+   always @(posedge w_clk)
      begin
 	if (we)
 	  begin
@@ -179,7 +184,7 @@ module fifo_(
 	  end
      end
 
-   always @(r_clk)
+   always @(posedge r_clk)
      begin
 	if (re)
 	  begin
@@ -187,9 +192,9 @@ module fifo_(
 	  end
      end
 
-   always @(we | re)
+   always @(posedge w_clk)
      begin
-	if (we & ~re)
+	if (we & ~re )
 	  begin
 	     ctr <= ctr + 1;
 	  end
@@ -197,8 +202,8 @@ module fifo_(
 	  begin
 	     ctr <= ctr - 1;
 	  end;	
-     end
-  
+     end   
+    
    
    SB_RAM40_4K #(
 		 .WRITE_MODE(MODE),
