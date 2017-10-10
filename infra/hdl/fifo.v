@@ -15,14 +15,15 @@ module fifo(
 
    wire [15:0] 				_d, _q;
 
-   assign _d = { {(16 - DATA_WIDTH){1'b0}}, {d} };
-   assign q =  _q[DATA_WIDTH - 1 : 0];
+   genvar 				i;
    
-   generate
+   generate	   
       
       if (DATA_WIDTH <= 16 & DATA_WIDTH > 8)
 	begin
-	   	   
+
+	   assign _d = { {(16 - DATA_WIDTH){1'b0}}, {d} };
+	   
 	   fifo_#(
 		  .MODE(0),
 		  .ADDR_WIDTH(8)
@@ -42,6 +43,17 @@ module fifo(
       
       else if ( DATA_WIDTH <= 8 & DATA_WIDTH > 4)
 	begin
+	   
+	   for (i = 0; i < 8; i=i+1)
+	     begin
+		assign _d[i * 2 + 1] = 1'b0;
+		assign _d[i * 2]     = i < DATA_WIDTH ? d[i] : 1'b0;
+		
+		if (i < DATA_WIDTH)
+		  begin
+		     assign q[i] = _q[i * 2];
+		  end
+	     end
 	   
 	   fifo_#(
 		  .MODE(1),
@@ -63,6 +75,20 @@ module fifo(
       else if ( DATA_WIDTH <= 4 & DATA_WIDTH > 2)
 	begin
 	   
+	   for (i = 0; i < 4; i=i+1)
+	     begin
+		assign _d[i * 4 + 0] = 1'b0;
+		assign _d[i * 4 + 1] = i < DATA_WIDTH ? d[i] : 1'b0;
+		assign _d[i * 4 + 2] = 1'b0;
+		assign _d[i * 4 + 3] = 1'b0;
+
+		if (i < DATA_WIDTH)
+		  begin
+		     assign q[i] = _q[i * 4 + 1];
+		  end
+
+	     end
+
 	   fifo_#(
 		  .MODE(2),
 		  .ADDR_WIDTH(10)
@@ -82,6 +108,20 @@ module fifo(
       
       else if ( DATA_WIDTH <= 2 & DATA_WIDTH > 0)
 	begin
+	   
+	   for (i = 0; i < 2; i=i+1)
+	     begin
+		assign _d[i * 8 + 2 : i * 8]     = 0;
+		assign _d[i * 8 + 3]             = i < DATA_WIDTH ? d[i] : 1'b0;
+		assign _d[i * 8 + 7 : i * 8 + 4] = 0;
+
+		if (i < DATA_WIDTH)
+		  begin
+		     assign q[i] = _q[i * 8 + 3];
+		  end
+
+	     end
+	   
 	   
 	   fifo_#(
 		  .MODE(3),
