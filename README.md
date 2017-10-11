@@ -38,7 +38,7 @@ Run `igloo.py echo` (Requires [pySerial](https://pythonhosted.org/pyserial/) to 
 igloo.py echo Hello --tty=/dev/ttyUSB1
 ```
 
-###Error: SerialException: No such file or directory
+### Error: SerialException: No such file or directory
 
 Find the serial device the FPGA is connected to with a command such as:
 
@@ -46,7 +46,7 @@ Find the serial device the FPGA is connected to with a command such as:
 dmesg | grep tty
 ```
 
-###Error: SerialException: Permission Denied
+### Error: SerialException: Permission Denied
 
 Test if you have permission:
 
