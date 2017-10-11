@@ -8,7 +8,6 @@ module infra(
 	     output 	  rs232_tx_o
 	     );
    
-   wire 		  clk_96;
    wire 		  clk_led;
    wire 		  clk_uart_rx, clk_uart_tx;
 
@@ -16,15 +15,7 @@ module infra(
    wire 			    rx_o_v, tx_o_v;
    reg [`UART_DATA_LENGTH - 1 : 0]  tx_i;
    reg 				    tx_i_v = 0;   
-   
-   clks #(
-	  .PLL_EN (1),
-	  .GBUFF_EN(0)
-	  ) clk_96_gen(
-		       .clk_i (clk_i),
-		       .clk_o (clk_96)
-		       );
-  
+     
    clks #(
 	  .PLL_EN(0),
 	  .GBUFF_EN(1),
