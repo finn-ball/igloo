@@ -10,11 +10,11 @@ cd igloo
 source source.sh
 igloo.py --help
 ```
-# Creating Projects
+# Quick Project Build
 
 Creating projects involves abiding by the file structure and creating settings files.
 
-## Quick Project Build
+## Create and Burn
 
 ```
 igloo.py create projects/blink/cfg/config.ini
@@ -23,8 +23,18 @@ make burn
 ```
 You should notice a pretty LED pattern.
 
+## Simulating
 
-## Echo Project
+Each project should come with a test bench. A simple way to simulate the project is to use [iverilog](http://iverilog.icarus.com/) and [gtkwave](http://gtkwave.sourceforge.net/).
+
+```
+make gtkwave
+gtkwave ./build/iverilog/blink.vcd
+```
+
+This will produce a `.vvp` file followed by a `.vcd` file for gtkwave.
+
+# Echo Project
 
 ```
 igloo.py create projects/uart_echo/cfg/config.ini
@@ -57,6 +67,6 @@ cat /dev/ttyUSB1
 If you don't have permission to view:
 
 ```
-sudo usermod -a -G dialout youruser
+sudo usermod -a -G dialout $(USER)
 ```
 You may have to log out / in after running this command.
