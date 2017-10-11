@@ -6,7 +6,7 @@ class echo(object):
         sp.add_argument('echo', help='Send UART message', default = None)
         sp.add_argument('--tty', help='Location of serial connection', default = '/dev/ttyUSB1')
         sp.add_argument('--baud', help='Baud rate', default = 9600)
-        sp.add_argument('--timeout', help='', default = 1)
+        sp.add_argument('--timeout', help ='', default = 1, type = int)
         
         
     def __init__(self, **kwargs):
