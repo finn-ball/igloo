@@ -12,9 +12,9 @@ module fifo(
    
    
    parameter DATA_WIDTH = 1;
-
+   
    wire [15:0] 				_d, _q;
-
+   
    genvar 				i;
    
    generate	   
@@ -156,6 +156,24 @@ module fifo_(
 	     output 			 empty,
 	     output 			 full
 	    );
+
+   integer 				 i = 0;
+   
+   function [ADDR_WIDTH - 1:0] bin_to_gray;
+      input [ADDR_WIDTH - 1:0] 		 bin;
+      for (i =0; i < ADDR_WIDTH; i = i + 1)
+	begin
+	   bin_to_gray[i] = (bin >> 1) ^ bin;
+	end
+   endfunction
+
+   function [ADDR_WIDTH - 1:0] gray_to_bin;
+      input [ADDR_WIDTH - 1:0] 		 gray;
+      for (i = 0; i < ADDR_WIDTH; i = i + 1)
+	begin
+	   gray_to_bin[i] = ^ (gray >> i);
+	end
+   endfunction
    
    parameter MODE = 0;
    parameter ADDR_WIDTH = 0;
@@ -163,10 +181,10 @@ module fifo_(
    localparam DATA_WIDTH = 16;
    localparam DEPTH = 1 << (ADDR_WIDTH);
    
-   reg [ADDR_WIDTH - 1 : 0] 		 waddr = 0, raddr = 0, ctr = 0;
+   reg [ADDR_WIDTH - 1 : 0] 		 waddr = 0, raddr = 0;
    
    wire [10 : 0] 			 _waddr, _raddr;
-   
+      
    assign _waddr = { {(11 - ADDR_WIDTH){1'b0}}, {waddr} };
    assign _raddr = { {(11 - ADDR_WIDTH){1'b0}}, {raddr} };
 
@@ -174,11 +192,11 @@ module fifo_(
    assign _raddr = { {(11 - ADDR_WIDTH){1'b0}}, {raddr} };
    
    assign empty = (raddr == waddr);
-   //assign full = 1'b0;//(&ctr);
+   assign full = (waddr - raddr) == 511;
    
    always @(posedge w_clk)
      begin
-	if (we)
+	if (we & ~full)
 	  begin
 	     waddr <= waddr + 1;
 	  end
@@ -186,24 +204,11 @@ module fifo_(
 
    always @(posedge r_clk)
      begin
-	if (re)
+	if (re & ~empty)
 	  begin
 	     raddr <= raddr + 1;
 	  end
-     end
-
-   always @(posedge w_clk)
-     begin
-	if (we & ~re )
-	  begin
-	     ctr <= ctr + 1;
-	  end
-	else if (~we & re)
-	  begin
-	     ctr <= ctr - 1;
-	  end;	
-     end   
-    
+     end    
    
    SB_RAM40_4K #(
 		 .WRITE_MODE(MODE),
