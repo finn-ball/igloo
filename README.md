@@ -2,7 +2,7 @@
 A project builder for the iCE40 FPGA series. Uses the [IceStorm](http://www.clifford.at/icestorm/) toolset.
 
 ## Install 
-Make sure you have the [IceStorm](http://www.clifford.at/icestorm/) toolset installed
+Follow the [IceStorm](http://www.clifford.at/icestorm/) installation instructions, including the installation of [arachne-pnr] (https://github.com/cseed/arachne-pnr).
 
 ```
 git clone https://github.com/finnball/igloo.git
@@ -23,6 +23,12 @@ make burn
 ```
 You should notice a pretty LED pattern.
 
+## Timing Information
+
+`make time`
+
+Displays the timing information using [icetime](http://www.clifford.at/icestorm/).
+
 ## Simulating
 
 Each project should come with a test bench. A simple way to simulate the project is to use [iverilog](http://iverilog.icarus.com/) and [gtkwave](http://gtkwave.sourceforge.net/).
@@ -42,7 +48,7 @@ make
 make burn
 ```
 
-Run `igloo.py echo` (Requires [pySerial](https://pythonhosted.org/pyserial/) to be installed):
+Run `igloo.py echo` (Requires [pySerial](https://pythonhosted.org/pyserial/) to be [installed](http://pyserial.readthedocs.io/en/latest/pyserial.html)):
 
 ```
 igloo.py echo Hello --tty=/dev/ttyUSB1
