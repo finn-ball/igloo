@@ -86,7 +86,6 @@ class parse_ini(object):
             raise Exception("Settings file could not be parsed")
 
         self._device_family = ''
-        print self._device
         
         if (self._device == 'lp384'):
             self._device_family = "384"
