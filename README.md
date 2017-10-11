@@ -2,7 +2,7 @@
 A project builder for the iCE40 FPGA series. Uses the [IceStorm](http://www.clifford.at/icestorm/) toolset.
 
 ## Install 
-Follow the [IceStorm](http://www.clifford.at/icestorm/) installation instructions, including the installation of [arachne pnr] (https://github.com/cseed/arachne-pnr).
+Follow the [IceStorm](http://www.clifford.at/icestorm/) installation instructions, including the installation of [arachne-pnr](https://github.com/cseed/arachne-pnr).
 
 ```
 git clone https://github.com/finnball/igloo.git
