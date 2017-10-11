@@ -26,15 +26,13 @@ You should notice a pretty LED pattern.
 
 ## Echo Project
 
-Requieres [pySerial](https://pythonhosted.org/pyserial/) to be installed.
-
 ```
 igloo.py create projects/uart_echo/cfg/config.ini
 make
 make burn
 ```
 
-Run `igloo.py echo`:
+Run `igloo.py echo` (Requires [pySerial](https://pythonhosted.org/pyserial/) to be installed):
 
 ```
 igloo.py echo Hello --tty=/dev/ttyUSB1
