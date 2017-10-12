@@ -51,7 +51,7 @@ make burn
 Run `igloo.py echo` (Requires [pySerial](https://pythonhosted.org/pyserial/) to be [installed](http://pyserial.readthedocs.io/en/latest/pyserial.html)):
 
 ```
-igloo.py echo Hello --tty=/dev/ttyUSB1
+igloo.py echo "Hello There!"
 ```
 
 ### Error: SerialException: No such file or directory
@@ -60,6 +60,11 @@ Find the serial device the FPGA is connected to with a command such as:
 
 ```
 dmesg | grep tty
+```
+Then change add the optional argument:
+
+```
+igloo.py echo "Hello There!" --tty=$(TTY)
 ```
 
 ### Error: SerialException: Permission Denied
