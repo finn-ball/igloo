@@ -38,7 +38,7 @@ class echo(object):
             ser.close()
 
         if (line != echo):
-            print ("Error: Echo != Message recieved")
+            print ("Error: Message sent != Message recieved")
             
         print ("Message recieved:\n" + line)
 
