@@ -3,8 +3,8 @@ module top_tb;
    reg clk_i = 0;
    reg rst_i = 1;
    
-   reg [3:0]  rx_i_ctr = 0;
-   reg [9:0]  rx_tmp = 10'b1010001110;
+   reg [4:0]  rx_i_ctr = 0;
+   reg [19:0]  rx_tmp = 20'b10100011101010010000;
    reg 	      tmp_rx_bit = 1;
 
    wire       clk_uart_rx, clk_uart_tx;
@@ -21,7 +21,7 @@ module top_tb;
 
 	# 1250 rst_i <= 0;
 	
-	# 100000 $finish;
+	# 200000 $finish;
 	
      end
 
@@ -66,7 +66,7 @@ module top_tb;
    
    always @ (posedge clk_uart_tx)
      begin
-	if (rx_i_ctr[3:0] == 9 | rst_i)
+	if (rx_i_ctr == 19 | rst_i)
 	  begin
 	     rx_i_ctr <= 0;
 	  end

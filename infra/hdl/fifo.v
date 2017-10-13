@@ -12,22 +12,23 @@ module fifo(
    
    
    parameter DATA_WIDTH = 1;
+   parameter ASYNC = 0;
    
    wire [15:0] 				_d, _q;
    
    genvar 				i;
-   
    generate	   
       
       if (DATA_WIDTH <= 16 & DATA_WIDTH > 8)
 	begin
 
 	   assign _d = { {(16 - DATA_WIDTH){1'b0}}, {d} };
-	   assign q = { {(16 - DATA_WIDTH){1'b0}}, {q} };
+	   assign q = { {(16 - DATA_WIDTH){1'b0}}, {_q} };
 	   
 	   fifo_#(
 		  .MODE(0),
-		  .ADDR_WIDTH(8)
+		  .ADDR_WIDTH(8),
+		  .ASYNC(ASYNC)
 		  ) fifo_256x16_(
 				 .w_clk(w_clk),
 				 .r_clk(r_clk),
@@ -58,7 +59,8 @@ module fifo(
 
 	   fifo_#(
 		  .MODE(1),
-		  .ADDR_WIDTH(9)
+		  .ADDR_WIDTH(9),
+		  .ASYNC(ASYNC)
 		  ) fifo_512x8(
 			       .w_clk(w_clk),
 			       .r_clk(r_clk),
@@ -92,7 +94,8 @@ module fifo(
 
 	   fifo_#(
 		  .MODE(2),
-		  .ADDR_WIDTH(10)
+		  .ADDR_WIDTH(10),
+		  .ASYNC(ASYNC)
 		  ) fifo_1024x4(
 				.w_clk(w_clk),
 				.r_clk(r_clk),
@@ -126,7 +129,8 @@ module fifo(
 	   
 	   fifo_#(
 		  .MODE(3),
-		  .ADDR_WIDTH(11)
+		  .ADDR_WIDTH(11),
+		  .ASYNC(ASYNC)
 		  ) fifo_2048x2(
 				.w_clk(w_clk),
 				.r_clk(r_clk),
@@ -146,69 +150,31 @@ module fifo(
 endmodule // fifo
 
 module fifo_(
-	     input 			 w_clk,
-	     input 			 r_clk,
-	     input 			 we,
-	     input [DATA_WIDTH - 1 : 0]  d,
-	     input 			 re,
-	     input [DATA_WIDTH - 1 :0] 	 mask,
-	     output [DATA_WIDTH - 1 : 0] q,
-	     output 			 empty,
-	     output 			 full
-	    );
-
-   integer 				 i = 0;
+	     input 			     w_clk,
+	     input 			     r_clk,
+	     input 			     we,
+	     input [RAM_DATA_WIDTH - 1 : 0]  d,
+	     input 			     re,
+	     input [RAM_DATA_WIDTH - 1 :0]   mask,
+	     output [RAM_DATA_WIDTH - 1 : 0] q,
+	     output 			     empty,
+	     output 			     full
+	     );
    
-   function [ADDR_WIDTH - 1:0] bin_to_gray;
-      input [ADDR_WIDTH - 1:0] 		 bin;
-      for (i =0; i < ADDR_WIDTH; i = i + 1)
-	begin
-	   bin_to_gray[i] = (bin >> 1) ^ bin;
-	end
-   endfunction
-
-   function [ADDR_WIDTH - 1:0] gray_to_bin;
-      input [ADDR_WIDTH - 1:0] 		 gray;
-      for (i = 0; i < ADDR_WIDTH; i = i + 1)
-	begin
-	   gray_to_bin[i] = ^ (gray >> i);
-	end
-   endfunction
+   function [ADDR_WIDTH :0] bin_to_gray;
+      input [ADDR_WIDTH :0] 		     bin;
+      bin_to_gray = (bin >> 1) ^ bin;
+   endfunction // bin_to_gray
    
    parameter MODE = 0;
    parameter ADDR_WIDTH = 0;
+   parameter ASYNC = 0;
    
-   localparam DATA_WIDTH = 16;
-   localparam DEPTH = 1 << (ADDR_WIDTH);
+   localparam RAM_ADDR_WIDTH = 11; 
+   localparam RAM_DATA_WIDTH = 16;
    
-   reg [ADDR_WIDTH - 1 : 0] 		 waddr = 0, raddr = 0;
-   
-   wire [10 : 0] 			 _waddr, _raddr;
-      
-   assign _waddr = { {(11 - ADDR_WIDTH){1'b0}}, {waddr} };
-   assign _raddr = { {(11 - ADDR_WIDTH){1'b0}}, {raddr} };
-
-   assign _waddr = { {(11 - ADDR_WIDTH){1'b0}}, {waddr} };
-   assign _raddr = { {(11 - ADDR_WIDTH){1'b0}}, {raddr} };
-   
-   assign empty = (raddr == waddr);
-   assign full = (waddr - raddr) == 511;
-   
-   always @(posedge w_clk)
-     begin
-	if (we & ~full)
-	  begin
-	     waddr <= waddr + 1;
-	  end
-     end
-
-   always @(posedge r_clk)
-     begin
-	if (re & ~empty)
-	  begin
-	     raddr <= raddr + 1;
-	  end
-     end    
+   reg [ADDR_WIDTH : 0] 		 raddr = 0, waddr = 0;
+   wire [RAM_ADDR_WIDTH - 1 : 0] 	 _waddr, _raddr;
    
    SB_RAM40_4K #(
 		 .WRITE_MODE(MODE),
@@ -223,9 +189,96 @@ module fifo_(
 			 .WCLK(w_clk),
 			 .WCLKE(1'b1),
 			 .WDATA(d),
-			 .WE(1'b1),
+			 .WE(we),
 			 .MASK(mask)
 			 );
    
+   assign _waddr = { {(RAM_ADDR_WIDTH - ADDR_WIDTH){1'b0}}, {waddr[ADDR_WIDTH - 1 : 0]} };
+   assign _raddr = { {(RAM_ADDR_WIDTH - ADDR_WIDTH){1'b0}}, {raddr[ADDR_WIDTH - 1 : 0]} };
+   
+   always @ (posedge w_clk)
+     begin
+	if (we & ~full)
+	  begin
+	     waddr <= waddr + 1;
+	  end
+     end
+
+   always @ (posedge r_clk)
+     begin
+	if (re & ~empty)
+	  begin
+	     raddr <= raddr + 1;
+	  end
+     end
+   
+   generate
+      
+      if (ASYNC)
+	begin : async_ctrs
+	   
+	   reg 					 _full = 0, _empty = 1;
+	   reg [ADDR_WIDTH : 0] 		 wptr = 0, rptr = 0;
+	   reg [ADDR_WIDTH : 0] 		 rq1_wptr = 0, rq2_wptr = 0;
+	   reg [ADDR_WIDTH : 0] 		 wq1_rptr = 0, wq2_rptr = 0;
+
+	   wire [ADDR_WIDTH : 0] 		 _wptr, _rptr;
+	   
+	   assign _wptr = bin_to_gray(waddr + (we & ~full));
+	   assign _rptr = bin_to_gray(raddr + (re & ~empty));
+	   
+	   assign full = _full;
+	   assign empty = _empty;
+	   
+	   always @ (posedge w_clk)
+	     begin
+		wptr <= _wptr;
+		_full <= (_wptr ==
+			  {~wq2_rptr[ADDR_WIDTH:ADDR_WIDTH-1], wq2_rptr[ADDR_WIDTH-2:0]});
+	     end
+	   
+	   always @ (posedge r_clk)
+	     begin
+		_empty <= (_rptr == rq2_wptr);
+		rptr <= _rptr;
+	     end   
+	   
+	   always @ (posedge w_clk)
+	     begin
+		wq1_rptr <= rptr;
+		wq2_rptr <= wq1_rptr;
+	     end
+	   
+	   always @ (posedge r_clk)
+	     begin
+		rq1_wptr <= wptr;
+		rq2_wptr <= rq1_wptr;
+	     end
+	   
+	end // if (ASYNC)
+      
+      else
+	begin : sync_ctrs
+
+	   reg [ADDR_WIDTH - 1 : 0] ctr = 0;
+	   
+	   assign full = &ctr;
+	   assign empty = ~&ctr; 
+	   
+	   always @ (posedge w_clk)
+	     begin
+		if (we & ~re & ~full)
+		  begin
+		     ctr <= ctr + 1;
+		  end
+		else if(re & ~we & ~empty)
+		  begin
+		     ctr <= ctr - 1;
+		  end
+	     end // always @ (posedge w_clk)
+	   
+	end // else: !if(ASYNC)
+   endgenerate
+      
 endmodule // fifo_
 
