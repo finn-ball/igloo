@@ -69,9 +69,9 @@ module uart_tx(
 	  end
      end
 
-   assign tx_o_v = (state == ST_DATA) ? 1 : 0;
+   assign tx_o_v = (state == ST_IDLE) ? 0 : 1;
 
-   always @*
+   always @ *
      begin
 	if (state == ST_START)
 	  begin
@@ -81,12 +81,11 @@ module uart_tx(
 	  begin
 	     s_tx = s_rx[0];
 	  end
-	else
+	else if (state == ST_STOP)
 	  begin
 	     s_tx = 1;
 	  end
      end // always @ *
-   
    
    assign tx_o = s_tx;
 
