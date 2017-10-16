@@ -206,7 +206,7 @@ module dram_2048x2(
 			.mask(16'b0)
 			);
    
-endmodule // dram_1024x4
+endmodule // dram_2048x2
 
 module dram_(
 	    input 			    w_clk,
