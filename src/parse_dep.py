@@ -190,6 +190,9 @@ burn:
 time: $(ASC)
 	icetime $(ICETIME_FLAGS) $(ASC)
 
+stat: $(ASC)
+	icebox_stat -v $(ASC)
+
 iverilog: $(SIM) $(FILES)
 	mkdir -p $(IVERILOG_BUILD)
 	iverilog $(IVERILOG_FLAGS)
