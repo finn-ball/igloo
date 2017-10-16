@@ -173,8 +173,8 @@ module fifo_(
    localparam RAM_ADDR_WIDTH = 11; 
    localparam RAM_DATA_WIDTH = 16;
    
-   reg [ADDR_WIDTH : 0] 		 raddr = 0, waddr = 0;
-   wire [RAM_ADDR_WIDTH - 1 : 0] 	 _waddr, _raddr;
+   reg [ADDR_WIDTH - 1 : 0] 		     raddr = 0, waddr = 0;
+   wire [RAM_ADDR_WIDTH - 1 : 0] 	     _waddr, _raddr;
    
    SB_RAM40_4K #(
 		 .WRITE_MODE(MODE),
@@ -193,8 +193,8 @@ module fifo_(
 			 .MASK(mask)
 			 );
    
-   assign _waddr = { {(RAM_ADDR_WIDTH - ADDR_WIDTH){1'b0}}, {waddr[ADDR_WIDTH - 1 : 0]} };
-   assign _raddr = { {(RAM_ADDR_WIDTH - ADDR_WIDTH){1'b0}}, {raddr[ADDR_WIDTH - 1 : 0]} };
+   assign _waddr = { {(RAM_ADDR_WIDTH - ADDR_WIDTH){1'b0}}, {waddr} };
+   assign _raddr = { {(RAM_ADDR_WIDTH - ADDR_WIDTH){1'b0}}, {raddr} };
    
    always @ (posedge w_clk)
      begin
