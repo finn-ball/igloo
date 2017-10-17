@@ -1,3 +1,66 @@
+module ram(
+	   input 		       clk,
+	   input 		       we,
+	   input [ADDR_WIDTH - 1 : 0]  waddr,
+	   input [DATA_WIDTH - 1 : 0]  d,
+	   input 		       re,
+	   input [ADDR_WIDTH - 1 : 0]  raddr,
+	   output [DATA_WIDTH - 1 : 0] q
+	   );
+   
+   parameter ADDR_WIDTH = 8;
+   parameter DATA_WIDTH = 16;
+   localparam DEPTH = 1  << ADDR_WIDTH;
+   
+   reg [DATA_WIDTH - 1 : 0] 	       mem [DEPTH - 1 : 0];
+   reg [DATA_WIDTH - 1 : 0] 	       _q = 0;
+   
+   assign q = _q;
+   
+   always @ (posedge clk)
+     begin
+	if (we)
+	  begin
+	     mem[waddr] <= d;
+	  end
+
+	if (re)
+	  begin
+	     _q <= mem[raddr];
+	  end
+     end // always @ (posedge clk)
+   
+endmodule // ram
+
+module rom(
+	   input 		       clk,
+	   input [ADDR_WIDTH - 1 : 0]  raddr,
+	   output [DATA_WIDTH - 1 : 0] q
+	   );
+   
+   parameter ADDR_WIDTH = 9;
+   parameter DATA_WIDTH = 8;
+   parameter FILE_NAME = "file.hex";
+   
+   localparam DEPTH = 1  << ADDR_WIDTH;
+   
+   reg [DATA_WIDTH - 1 : 0] 	       mem [DEPTH - 1 : 0];
+   reg [DATA_WIDTH - 1 : 0] 	       _q = 0;
+   
+   initial
+     begin
+	$readmemh(FILE_NAME, mem);
+     end
+   
+   assign q = _q;
+   
+   always @ (posedge clk)
+     begin
+	_q <= mem[raddr];
+     end // always @ (posedge clk)
+   
+endmodule // rom
+
 module dram_256x16(
 		   input 		       w_clk,
 		   input 		       r_clk,
@@ -226,7 +289,7 @@ module dram_(
    
    parameter MODE = -1;
    localparam RAM_DATA_WIDTH = 16;
-   localparam RAM_ADDR_WIDTH = 10;
+   localparam RAM_ADDR_WIDTH = 11;
    
    SB_RAM40_4K #(
 		 .WRITE_MODE(MODE),
