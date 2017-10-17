@@ -124,7 +124,9 @@ module dram_1024x4(
 
    assign _waddr = { {(RAM_ADDR_WIDTH - ADDR_WIDTH){1'b0}}, {waddr} };
    assign _raddr = { {(RAM_ADDR_WIDTH - ADDR_WIDTH){1'b0}}, {raddr} };
-   
+
+   genvar 				      i;
+   generate
    for (i = 0; i < 4; i=i+1)
      begin
 	assign _d[i * 4 + 0] = 1'b0;
@@ -135,7 +137,7 @@ module dram_1024x4(
 	assign q[i] = _q[i * 4 + 1];
 	
      end
-   
+   endgenerate
    
    dram_#(
 	  .MODE(2)
