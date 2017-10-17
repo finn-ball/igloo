@@ -6,7 +6,8 @@ module rom(
    
    parameter ADDR_WIDTH = 9;
    parameter DATA_WIDTH = 8;
-   parameter FILE_NAME = "file.hex";
+   parameter FILE_NAME = "";
+   parameter INIT = 0;
    
    localparam DEPTH = 1  << ADDR_WIDTH;
    
@@ -15,7 +16,10 @@ module rom(
    
    initial
      begin
-	$readmemh(FILE_NAME, mem);
+	if(INIT)
+	  begin
+	     $readmemh(FILE_NAME, mem);
+	  end
      end
    
    assign q = _q;
