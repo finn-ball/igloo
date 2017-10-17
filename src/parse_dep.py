@@ -105,7 +105,7 @@ class parse_ini(object):
             if "include" in self.dep_map[f]:
                 incs = re.split(', | |,', self.dep_map[f]['include'])
                 for inc in incs:
-                    yosys_includes += '-I%s' % inc
+                    yosys_includes += '-I%s ' % inc
                 
             yosys += ('yosys read_verilog -sv %s %s\n' % (yosys_includes , self.dep_map[f]['path'] + f))
             
