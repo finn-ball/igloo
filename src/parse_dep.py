@@ -55,15 +55,14 @@ class parse_ini(object):
         
         if (not config.has_option(section, option)):
             return return_dict
-
+        
         deps = re.split(', | |,', config.get(section, option))
         
         for dep in deps:
             if "/" in dep:
-                _root, _section = dep.split("/")
+                _root, _section = dep.rsplit("/", 1)
                 return_dict.update(self.flatten_ini_tree(_root, _section, option, ini_options))
             else:
-                
                 _section = dep
                 _root = root
                 return_dict.update(self.flatten_ini_tree(_root, _section, option, ini_options))
