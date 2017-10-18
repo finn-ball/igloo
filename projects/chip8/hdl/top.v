@@ -1,4 +1,3 @@
-`include "uart.vh"
 `include "chip8.vh"
 
 module top(
@@ -9,21 +8,24 @@ module top(
 	   output 	rs232_tx_o
 	   );
 
-   localparam ADDR_WIDTH = 2;
-   localparam DATA_WIDTH = 2;
-   
-   wire [DATA_WIDTH - 1 : 0] 	d, q;
-   wire [ADDR_WIDTH - 1 : 0] waddr, raddr;
+   localparam ADDR_WIDTH = 12;
+   localparam DATA_WIDTH = 8;
 
-   assign raddr = 0;
-   assign waddr = 0;
+   wire 		we, re;
+   wire [DATA_WIDTH - 1 : 0] d, q;
+   wire [ADDR_WIDTH - 1 : 0] waddr, raddr;
    
-   ram#(
+   mem#(
 	.DATA_WIDTH(DATA_WIDTH),
-	.ADDR_WIDTH(ADDR_WIDTH)
-	 ) ram(
+	.ADDR_WIDTH(ADDR_WIDTH),
+	.INIT(1),
+	.SPRITE_FILE_NAME("projects/chip8/cfg/sprite.hex"),
+	.SPRITE_FILE_WIDTH(80),
+	.PROGRAM_FILE_NAME("projects/chip8/cfg/pong.hex"),
+	.PROGRAM_FILE_WIDTH(256)
+	) mem (
 	       .clk(ice_clk_i),
-	       .we(1'b0),
+	       .we(we),
 	       .waddr(waddr),
 	       .d(d),
 	       .re(1'b1),
@@ -31,6 +33,10 @@ module top(
 	       .q(q)
 	       );
 
+   interpreter interpreter(
+			   .clk(ice_clk_i),
+			   .d(q),
+			   .raddr(raddr)
+			   );
 
-   
 endmodule // top
