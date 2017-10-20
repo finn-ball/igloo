@@ -141,7 +141,8 @@ class parse_ini(object):
             
         iverilog += '-l /usr/local/share/yosys/ice40/cells_sim.v\n'
         for i in self._includes:
-            iverilog += '+incdir+' + i + '\n'
+            _dir, _file = i.rsplit("/", 1)
+            iverilog += '+incdir+' + _dir + '\n'
             
         iverilog += '+libext+.v+.vl+.vh\n'
         iverilog += (self._root + '/sim/' + self._top + '_tb.v\n')
