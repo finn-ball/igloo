@@ -7,69 +7,84 @@ from collections import OrderedDict
 class parse_ini(object):
 
     def __init__(self, file_path):
-        ini_options = ["include"]
 
         self.parse_makefile(file_path)
 
-        self.dep_map = self.flatten_ini_tree(self._root, (self._top + '.v'), 'deps', ini_options)
+        self.dep_map = self.flatten_dep_tree(self._root, (self._top + '.v'))
         
         self.set_files()
-    
+
     def set_files(self):
+
         file_l = []
         incs_l = []
+        root = ""
+
+        for k,v in self.dep_map.iteritems():
+            file_l.append(k)
+            for i in v:
+                if isinstance(i, dict):
+                    for options, j in i.iteritems():
+                        if options == 'includes':
+                            incs_l.append(j[0])
         
-        for f in self.dep_map:
-            file_l.append(self.dep_map[f]["path"] + f)
-            if "include" in self.dep_map[f]:
-                incs = re.split(', | |,', self.dep_map[f]['include'])
-                for inc in incs:
-                    incs_l.append(inc)
-                    
         self._files = file_l
-        self._includes = list(OrderedDict.fromkeys(incs_l))
-    
-    def flatten_ini_tree(self, root, section, option, ini_options):        
-        config = ConfigParser.SafeConfigParser()
-        hdl_dir = root + '/hdl/'
-        ini_path = root + '/cfg/dep.ini'
-        options_dict = {}
-        return_dict = OrderedDict()
+        self._includes = set(incs_l)
         
+    def flatten_dep_tree(self, root, section):
+        
+        config = ConfigParser.SafeConfigParser()
+        ini_path = root + '/cfg/dep.ini'
         if not os.path.exists(ini_path):
             raise Exception('File does not exist: ', ini_path)
-        
+
         config.read(ini_path)
 
-        options_dict["path"] = hdl_dir
-        return_dict[section] = options_dict
-
-        if (not config.has_section(section)):
-            return return_dict
-
-        for opt in ini_options:
-            if (config.has_option(section, opt)):
-                options_dict[opt] = config.get(section, opt)
-
-        return_dict[section] = options_dict
+        file_path = root + '/hdl/' + section
         
-        if (not config.has_option(section, option)):
-            return return_dict
+        return_dict = OrderedDict()
+        return_dict[file_path] = OrderedDict()
+        options_dict = OrderedDict()
+        options_list = []
         
-        deps = re.split(', | |,', config.get(section, option))
+        if (config.has_section(section)):
+            
+            for option in config.options(section):
+                contents = re.split(', | |,', config.get(section, option))
+                incl_list = []
+                for cont in contents:
+                    _root = ""
+                    _section = ""
+                    _file_path = ""
+                    
+                    if "/" in cont:
+                        _root, _section = cont.rsplit("/", 1)
+                    else:
+                        _section = cont
+                        _root = root
+
+                    if option == 'deps':
+                        _file_path = _root + '/hdl/' +_section
+                        return_dict[_file_path] = OrderedDict()
+                        return_dict.update(self.flatten_dep_tree(_root, _section))
+
+                    if option == 'includes':
+                        incl_list.append(_root + '/include/' + _section)
+                    
+                if option == 'includes':
+                    incl_dict = OrderedDict()
+                    incl_dict['includes'] = incl_list
+                    options_list.append(incl_dict)
+
+        options_dict = OrderedDict()
+        options_dict[file_path] = options_list
         
-        for dep in deps:
-            if "/" in dep:
-                _root, _section = dep.rsplit("/", 1)
-                return_dict.update(self.flatten_ini_tree(_root, _section, option, ini_options))
-            else:
-                _section = dep
-                _root = root
-                return_dict.update(self.flatten_ini_tree(_root, _section, option, ini_options))
+        return_dict.update(options_dict)
         
         return return_dict
-        
+            
     def parse_makefile(self, ini):
+
         makefile_config = ConfigParser.ConfigParser()
         makefile_config.read(ini)
         
@@ -97,37 +112,43 @@ class parse_ini(object):
         
 
     def create_yosys(self):
+
         yosys =  ''
-        
-        for f in self.dep_map:
+        for f, v in self.dep_map.iteritems():
             yosys_includes = ''
-            if "include" in self.dep_map[f]:
-                incs = re.split(', | |,', self.dep_map[f]['include'])
-                for inc in incs:
-                    yosys_includes += '-I%s ' % inc
-                
-            yosys += ('yosys read_verilog -sv %s %s\n' % (yosys_includes , self.dep_map[f]['path'] + f))
+            for i in v:
+                if isinstance(i, dict):
+                    for options, j in i.iteritems():
+                        if options == 'includes':
+                            _root = ''
+                            _file = ''
+                            _root, _file = j[0].rsplit("/", 1)
+                            yosys_includes += '-I%s' % _root
+
+            yosys += ('yosys read_verilog -sv %s %s\n' % (yosys_includes , f))
             
         yosys += ('yosys synth_ice40 -top %s -blif ./build/%s.blif\n') % (self._top, self._name)
-            
+        
         return yosys
 
     def create_iverilog(self):
+
         iverilog =  ''
         inc_list = []
 
         for f in self._files:
             iverilog += ('-l %s\n' % f)
-
+            
         iverilog += '-l /usr/local/share/yosys/ice40/cells_sim.v\n'
         for i in self._includes:
             iverilog += '+incdir+' + i + '\n'
-
+            
         iverilog += '+libext+.v+.vl+.vh\n'
         iverilog += (self._root + '/sim/' + self._top + '_tb.v\n')
         return iverilog
 
     def create_makefile(self):
+
         self._time = '#Created by igloo\n#{:%d-%m-%Y %H:%M:%S}\n'.format(datetime.datetime.now())
         makefile_constants ="""%s
 SHELL:=/bin/bash
