@@ -43,9 +43,12 @@ class parse_ini(object):
         file_path = root + '/hdl/' + section
         
         return_dict = OrderedDict()
-        return_dict[file_path] = OrderedDict()
+        incl_dict = OrderedDict()
+        options_dict = OrderedDict()
         options_dict = OrderedDict()
         options_list = []
+        
+        return_dict[file_path] = OrderedDict()
         
         if (config.has_section(section)):
             
@@ -67,16 +70,12 @@ class parse_ini(object):
                         _file_path = _root + '/hdl/' +_section
                         return_dict[_file_path] = OrderedDict()
                         return_dict.update(self.flatten_dep_tree(_root, _section))
-
+                        
                     if option == 'includes':
                         incl_list.append(_root + '/include/' + _section)
-                    
-                if option == 'includes':
-                    incl_dict = OrderedDict()
-                    incl_dict['includes'] = incl_list
-                    options_list.append(incl_dict)
-
-        options_dict = OrderedDict()
+                        incl_dict['includes'] = incl_list
+                        options_list.append(incl_dict)
+                        
         options_dict[file_path] = options_list
         
         return_dict.update(options_dict)
