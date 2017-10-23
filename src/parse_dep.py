@@ -125,8 +125,9 @@ class parse_ini(object):
                                 _file = ''
                                 _root, _file = l.rsplit("/", 1)
                                 yosys_includes += '-I%s' % _root
-
-            yosys += ('yosys read_verilog -sv %s %s\n' % (yosys_includes , f))
+            
+            project_includes = '-I' + self._root + '/hdl'
+            yosys += ('yosys read_verilog -sv %s %s %s\n' % (project_includes, yosys_includes , f))
             
         yosys += ('yosys synth_ice40 -top %s -blif ./build/%s.blif\n') % (self._top, self._name)
         
@@ -144,6 +145,8 @@ class parse_ini(object):
         for i in self._includes:
             _dir, _file = i.rsplit("/", 1)
             iverilog += '+incdir+' + _dir + '\n'
+            
+        iverilog += '+incdir+' + self._root + '/sim\n'
             
         iverilog += '+libext+.v+.vl+.vh\n'
         iverilog += (self._root + '/sim/' + self._top + '_tb.v\n')
@@ -190,13 +193,13 @@ ICETIME_FLAGS  = -mit -d $(DEVICE) -p $(PINMAP)
 
 IVERILOG_BUILD = $(BUILD)/iverilog
 VVP            = $(IVERILOG_BUILD)/$(PROJ).vvp
-IVERILOG_FLAGS = -Wall -c $(SCRIPTS)/iverilog.cf -o $(VVP) #-Wfloating-nets
+IVERILOG_FLAGS = -Wall -Wno-timescale -c $(SCRIPTS)/iverilog.cf -o $(VVP)
 
 .PHONY: all clean burn iverilog iverilog_monitor
 
 all: $(BIN)
 
-$(BLIF): $(FILES) 
+$(BLIF): $(FILES) $(INCLUDES)
 	mkdir -p $(BUILD)/logs
 	yosys $(YOSYS_FLAGS) &> $(BUILD)/logs/yosys.log
 
@@ -215,22 +218,22 @@ time: $(ASC)
 stat: $(ASC)
 	icebox_stat -v $(ASC)
 
-iverilog: $(SIM) $(FILES)
+iverilog: $(SIM) $(FILES) $(INCLUDES)
 	mkdir -p $(IVERILOG_BUILD)
 	iverilog $(IVERILOG_FLAGS)
 
 iverilog_monitor:	
 	-@make iverilog
-	@echo "Files watched: " $(SIM) $(FILES)
-	@while [[ 1 ]]; do inotifywait -e modify $(SIM) $(FILES); make iverilog; done
+	@echo "Files watched: " $(SIM) $(FILES) $(INCLUDES)
+	@while [[ 1 ]]; do inotifywait -e modify $(SIM) $(FILES) $(INCLUDES); make iverilog; done
 
 gtkwave: iverilog
 	vvp $(VVP)
 
 gtkwave_monitor:
 	-@make gtkwave
-	@echo "Files watched: " $(SIM) $(FILES)
-	@while [[ 1 ]]; do inotifywait -e modify $(SIM) $(FILES); make gtkwave; done
+	@echo "Files watched: " $(SIM) $(FILES) $(INCLUDES)
+	@while [[ 1 ]]; do inotifywait -e modify $(SIM) $(FILES) $(INCLUDES); make gtkwave; done
 
 clean:
 	rm -rf $(BUILD)/* """
