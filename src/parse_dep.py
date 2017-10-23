@@ -26,7 +26,8 @@ class parse_ini(object):
                 if isinstance(i, dict):
                     for options, j in i.iteritems():
                         if options == 'includes':
-                            incs_l.append(j[0])
+                            for l in j:
+                                incs_l.append(l)
         
         self._files = file_l
         self._includes = set(incs_l)
@@ -119,10 +120,11 @@ class parse_ini(object):
                 if isinstance(i, dict):
                     for options, j in i.iteritems():
                         if options == 'includes':
-                            _root = ''
-                            _file = ''
-                            _root, _file = j[0].rsplit("/", 1)
-                            yosys_includes += '-I%s' % _root
+                            for l in j:
+                                _root = ''
+                                _file = ''
+                                _root, _file = l.rsplit("/", 1)
+                                yosys_includes += '-I%s' % _root
 
             yosys += ('yosys read_verilog -sv %s %s\n' % (yosys_includes , f))
             
