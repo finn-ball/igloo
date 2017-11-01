@@ -168,84 +168,52 @@ module interpreter(
 	     case(mem_q_pipe[0][7 : 4])
 
 	       4'h0:
-		 begin
-		    opcode <= OP_SYS;
-		 end
+		 opcode <= OP_SYS;
 
 	       4'h1:
-		 begin
-		    opcode <= OP_JP_ADDR;
-		 end
+		 opcode <= OP_JP_ADDR;
 	       
 	       4'h2:
-		 begin
-		    opcode <= OP_CALL_ADDR;
-		 end
-
+		 opcode <= OP_CALL_ADDR;
+	       
 	       4'h3:
-		 begin
-		    opcode <= OP_SE_VX_BYTE;
-		 end
-
+		 opcode <= OP_SE_VX_BYTE;
+	       
 	       4'h4:
-		 begin
-		    opcode <= OP_SNE_VX_BYTE;
-		 end
+		 opcode <= OP_SNE_VX_BYTE;
 
 	       4'h5:
-		 begin
-		    opcode <= OP_SE_VX_VY;
-		 end
+		 opcode <= OP_SE_VX_VY;
 	       
 	       4'h6:
-		 begin
-		    opcode <= OP_LD_VX_BYTE;
-		 end
-
+		 opcode <= OP_LD_VX_BYTE;
+	       
 	       4'h7:
-		 begin
-		    opcode <= OP_ADD_VX_BYTE;
-		 end
-
+		 opcode <= OP_ADD_VX_BYTE;
+	       
 	       4'h8:
-		 begin
-		    opcode <= OP_VX_VY;
-		 end
+		 opcode <= OP_VX_VY;
 
 	       4'h9:
-		 begin
-		    opcode <= OP_SNE_VX_VY;
-		 end
+		 opcode <= OP_SNE_VX_VY;
 	     
 	       4'hA:
-		 begin
-		    opcode <= OP_LD_I_ADDR;
-		 end
-
+		 opcode <= OP_LD_I_ADDR;
+	       
 	       4'hB:
-		 begin
-		    opcode <= OP_JP_V0_ADDR;
-		 end
+		 opcode <= OP_JP_V0_ADDR;
 
 	       4'hC:
-		 begin
 		    opcode <= OP_RND_VX_BYTE;
-		 end
 	       
 	       4'hD:
-		 begin
-		    opcode <= OP_DRW_VX_VY_NIB;
-		 end
+		 opcode <= OP_DRW_VX_VY_NIB;
 	       
 	       4'hE:
-		 begin
-		    opcode <= OP_SKP_VX;
-		 end
+		 opcode <= OP_SKP_VX;
 	       
 	       4'hF:
-		 begin
 		    opcode <= OP_LD_VX;
-		 end
 	       
 	     endcase // case (mem_q_pipe[0][7 : 4])
 	     
