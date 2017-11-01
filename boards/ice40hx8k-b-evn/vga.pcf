@@ -1,0 +1,47 @@
+###################################
+# Physical constraints file (pcf) #
+# for iCE40HX8K-CT256             #
+###################################
+
+
+### Clock
+set_io ice_clk_i J3
+
+### LEDs
+set_io led_o[0] B5
+set_io led_o[1] B4
+set_io led_o[2] A2
+set_io led_o[3] A1
+set_io led_o[4] C5
+set_io led_o[5] C4
+set_io led_o[6] B3
+set_io led_o[7] C3
+
+### Pins
+set_io vs_o C16
+set_io hs_o B16
+
+set_io red_o[0] D16
+set_io red_o[1] D14
+set_io red_o[2] E16
+set_io red_o[3] D15
+
+set_io blue_o[0] F16
+set_io blue_o[1] E14
+set_io blue_o[2] G16
+set_io blue_o[3] F15
+
+set_io green_o[0] J15
+set_io green_o[1] H14
+set_io green_o[2] G14
+set_io green_o[3] F14
+
+
+### UART (FTDI Channel B)
+#set_io RS232_RX_i B10
+#set_io RS232_TX_o B12
+#set_io RTSn       B13
+#set_io CTSn       A15
+#set_io DTRn       A16
+#set_io DSRn       B14
+#set_io DCDn       B15
