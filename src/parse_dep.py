@@ -28,7 +28,7 @@ class parse_ini(object):
                         if options == 'includes':
                             for l in j:
                                 incs_l.append(l)
-        
+                                
         self._files = file_l
         self._includes = set(incs_l)
         
@@ -124,7 +124,7 @@ class parse_ini(object):
                                 _root = ''
                                 _file = ''
                                 _root, _file = l.rsplit("/", 1)
-                                yosys_includes += '-I%s' % _root
+                                yosys_includes += '-I%s ' % _root
             
             project_includes = '-I' + self._root + '/hdl'
             yosys += ('yosys read_verilog -sv %s %s %s\n' % (project_includes, yosys_includes , f))

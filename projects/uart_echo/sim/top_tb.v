@@ -4,9 +4,9 @@ module top_tb;
    reg rst_i = 1;
    
    reg [4:0]  rx_i_ctr = 0;
-   reg [19:0]  rx_tmp = 20'b10100011101010010000;
+   reg [19:0] rx_tmp = 20'b10100011101010010000;
    reg 	      tmp_rx_bit = 1;
-
+   
    wire       clk_uart_rx, clk_uart_tx;
    
    wire [7:0] led_o;

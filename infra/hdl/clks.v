@@ -1,3 +1,5 @@
+`include "top.vh"
+
 module clks(
 	    input  clk_i,
 	    output clk_o
@@ -16,7 +18,7 @@ module clks(
    // Non-PLL params
 
    parameter T = 1;
-
+   
    // Parameters
    
    reg 		   s_clk_o = 0;
@@ -38,7 +40,7 @@ module clks(
    endgenerate
    
    generate
-      if (PLL_EN == 1)
+      if (PLL_EN == 1 & `SIM == 0)
       	begin: PLL
 	   SB_PLL40_CORE #(
 			   .FEEDBACK_PATH("SIMPLE"),
@@ -57,13 +59,37 @@ module clks(
 				  .LATCHINPUTVALUE(1'b0),
 				  .SDI(1'b0),
 				  .SCLK(1'b0)
-			     );
-	   always @ (pll_clk_o)
+				  );
+	   always @*
+	     begin
+		s_clk_o <= pll_clk_o;
+	     end
+	end // if (PLL_EN == 1 & `SIM == 0)
+      
+      else if (PLL_EN == 1)
+	begin
+	   localparam MULT = (DIVF + 1) / ( (2**DIVQ) * (DIVR + 1) );
+	   reg pll_clk = 1'b0;
+	   
+	   always
+	     begin
+		#(1.0/MULT) pll_clk  = ~pll_clk;
+	     end
+	   
+	   assign pll_clk_o = pll_clk;
+	   
+	   always @*
 	     begin
 		s_clk_o <= pll_clk_o;
 	     end
 	   
-	end // block: PLL
+	   always @*
+	     begin
+		s_clk_o <= pll_clk_o;
+	     end
+	   
+	end // if (PLL_EN == 1)
+	 
       else
 	begin: CTR
 	   always @ (posedge clk_i)
@@ -78,7 +104,9 @@ module clks(
 		     ctr <= ctr + 1;
 		  end
 	     end // always @ (posedge clk_i)
+	   
 	end // block: CTR
+
    endgenerate
    
 endmodule // clks
