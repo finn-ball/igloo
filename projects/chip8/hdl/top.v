@@ -58,12 +58,12 @@ module top(
    clks#(
 	 .PLL_EN(1),
 	 .GBUFF_EN(1),
-	 .DIVR(4'b0000),
-	 .DIVF(7'b1010011),
-	 .DIVQ(3'b101)
 	 //.DIVR(4'b0000),
-	 //.DIVF(7'b1000010),
+	 //.DIVF(7'b1010011),
 	 //.DIVQ(3'b101)
+	 .DIVR(4'b0000),
+	 .DIVF(7'b1000010),
+	 .DIVQ(3'b101)
 	 ) clks(
 		.clk_i(ice_clk_i),
 		.clk_o(clk_25)

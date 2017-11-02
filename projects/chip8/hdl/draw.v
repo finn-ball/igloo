@@ -7,23 +7,22 @@ module draw(
 	    output [ADDR_WIDTH - 1 : 0] mem_raddr,
 	    input [DATA_WIDTH - 1 : 0] 	mem_d,
 	    output 			busy,
+	    output 			draw_out,
 	    output 			col,
 	    output 			hs,
-	    output 			hs_valid,
-	    output 			vs,
-	    output 			vs_valid			
+	    output 			vs
 	    );
 
-   localparam ST_IDLE = 0;
+   localparam ST_IDLE        = 0;
    localparam ST_DRAW_SCREEN = 1;
-   localparam ST_DRAW_VRAM = 2;
-
+   localparam ST_DRAW_VRAM   = 2;
+   
    localparam DATA_WIDTH = 8;
    localparam ADDR_WIDTH = 12;
    
    localparam VRAM_DATA_WIDTH = 2;
    localparam VRAM_ADDR_WIDTH = 11;
-
+   
    reg [ADDR_WIDTH - 1 : 0] 		_mem_raddr = 0;
    
    reg [3 : 0] 				state = ST_IDLE;
@@ -33,7 +32,7 @@ module draw(
    
    wire [VRAM_DATA_WIDTH - 1 : 0] 	q;
    reg [VRAM_DATA_WIDTH - 1 : 0] 	d = 0;
-   wire [VRAM_ADDR_WIDTH - 1 : 0] 	raddr, draw_vram_raddr;
+   wire [VRAM_ADDR_WIDTH - 1 : 0] 	raddr, draw_vram_raddr, draw_screen_raddr;
    
    reg [3 : 0] 				ctr_nib = 0;
    reg [3 : 0] 				nibbles = 0;
@@ -41,14 +40,23 @@ module draw(
 
    reg [4 : 0] 				y = 0;
    reg [5 : 0] 				x, x0 = 0;
-   reg 					_col;
+   wire [4 : 0] 			y_screen;
+   wire [5 : 0] 			x_screen;
 
+   wire 				hs_valid, vs_valid;
+   
+   reg 					_col;
+   
    reg 					q_d = 0;
+   reg 					draw_vram;
+   
+   assign draw_out = (vs_valid & hs_valid) ? q[0] : 0;
    
    assign col = _col;
    
-   assign raddr = state == ST_DRAW_VRAM ? draw_vram_raddr : 0;
+   assign raddr = state == ST_DRAW_VRAM ? draw_vram_raddr : draw_screen_raddr;
    assign draw_vram_raddr = { {y} , {x} };
+   assign draw_screen_raddr = { {y_screen} , {x_screen} };
    assign mem_raddr = _mem_raddr;
 
    assign busy = en | ~(state == ST_IDLE);
@@ -58,7 +66,11 @@ module draw(
 	case (state)
 	  ST_IDLE:
 	    begin
-	       if (en)
+	       if (vs)
+		 begin
+		    state <= ST_DRAW_SCREEN;
+		 end
+	       else if (en)
 		 begin
 		    state <= ST_DRAW_VRAM;
 		 end
@@ -70,10 +82,23 @@ module draw(
 		 begin
 		    state <= ST_IDLE;
 		 end
+	       else if (vs)
+		 begin
+		    state <= ST_DRAW_SCREEN;
+		 end
 	    end
+
+	  ST_DRAW_SCREEN:
+	    begin
+	       if (~vs)
+		 begin
+		    state <= draw_vram ? ST_DRAW_VRAM : ST_IDLE;
+		 end
+	    end
+	  
 	endcase
      end // always @ (posedge clk)
-
+   
    always @ (posedge clk)
      begin
 	if (en)
@@ -144,6 +169,18 @@ module draw(
      begin
 	if (en)
 	  begin
+	     draw_vram <= 1;
+	  end
+	else if (ctr_nib == (nibbles - 1) & (ctr_pix == 7) )
+	  begin
+	     draw_vram <= 0;
+	  end
+     end
+
+   always @ (posedge clk)
+     begin
+	if (en)
+	  begin
 	     ctr_nib <= 0;
 	  end
 	else if (state == ST_DRAW_VRAM & ctr_pix == 7)
@@ -170,12 +207,14 @@ module draw(
 		     .q(q)
 		     );
    
-   vga vga(
-	   .clk(clk),
-	   .vs_o(vs),
-	   .vs_valid(vs_valid),
-	   .hs_o(hs),
-	   .hs_valid(hs_valid)
-	   );
+   draw_screen draw_screen(
+			   .clk(clk),
+			   .x(x_screen),
+			   .y(y_screen),
+			   .vs(vs),
+			   .vs_valid(vs_valid),
+			   .hs(hs),
+			   .hs_valid(hs_valid)
+			   );
    
 endmodule

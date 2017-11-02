@@ -65,8 +65,6 @@ module interpreter(
    wire 			  _v_we, _v_re;
    wire [V_ADDR_WIDTH - 1 : 0] 	  _v_waddr, _v_raddr;
    wire [V_DATA_WIDTH - 1 : 0] 	  _v_d, _v_q;
-   
-   wire 			  vs_valid, hs_valid;
 
    wire [11 : 0] mem_raddr;
    
@@ -75,17 +73,14 @@ module interpreter(
    wire [3 : 0]  vram_nibbles;
    reg 		 draw_en = 0;
    wire 	 draw_col;
+   wire 	 draw_out;
 
    reg [15 : 0]  pc = 0;
    reg [7 : 0] 	 sp = 0;
    reg [7 : 0] 	 dt = 0;
    
    assign raddr = state == ST_DRAW ? mem_raddr :  _raddr;
-
-   assign red = hs_valid & vs_valid ? 4'b1111 : 0 ;
-   assign blue = hs_valid & vs_valid ? 4'b1111 : 0 ;
-   assign green = hs_valid & vs_valid ? 4'b1111 : 0;
-
+   
    always @(mem_q, state, opcode, v_q, I)
      begin
 	mem_q_pipe[0] <= mem_q;
@@ -204,7 +199,7 @@ module interpreter(
 		 opcode <= OP_JP_V0_ADDR;
 
 	       4'hC:
-		    opcode <= OP_RND_VX_BYTE;
+		 opcode <= OP_RND_VX_BYTE;
 	       
 	       4'hD:
 		 opcode <= OP_DRW_VX_VY_NIB;
@@ -213,7 +208,7 @@ module interpreter(
 		 opcode <= OP_SKP_VX;
 	       
 	       4'hF:
-		    opcode <= OP_LD_VX;
+		 opcode <= OP_LD_VX;
 	       
 	     endcase // case (mem_q_pipe[0][7 : 4])
 	     
@@ -287,7 +282,7 @@ module interpreter(
 			 pc <= pc + 2;
 		      end
 		 end
-
+	       
 	       OP_SNE_VX_BYTE:
 		 begin
 		    if (v_q != mem_q_pipe[0][7 : 0])
@@ -322,10 +317,6 @@ module interpreter(
 		      begin
 			 v_d <= dt;
 			 v_waddr <= mem_q_pipe[1][3 : 0];
-		      end
-		    if (mem_q_pipe[0] == 8'h15)
-		      begin
-			 dt <= v_q;
 		      end
 		 end 
 	     
@@ -379,7 +370,11 @@ module interpreter(
    
    always @ (posedge clk)
      begin
-	if  (dt > 0)
+	if ( (mem_q_pipe[0] == 8'h15) & (opcode_pipe[1] == OP_LD_VX) & (state_pipe[1] == ST_RD_U ) )
+	  begin
+	     dt <= v_q_pipe[0];
+	  end
+	else if  (dt > 0)
 	  begin
 	     dt <= dt - 1; // make 60Hz
 	  end
@@ -430,6 +425,10 @@ module interpreter(
 	v_q <= _v_q;
      end
    
+   assign red = draw_out ? 4'b1111 : 0 ;
+   assign blue = draw_out ? 4'b1111 : 0 ;
+   assign green = draw_out ? 4'b1111 : 0;
+   
    draw draw(
 	     .clk(clk),
 	     .en(draw_en),
@@ -440,10 +439,9 @@ module interpreter(
 	     .mem_d(mem_q),
 	     .busy(draw_busy),
 	     .col(draw_col),
+	     .draw_out(draw_out),
 	     .hs(hs),
-	     .hs_valid(hs_valid),
-	     .vs(vs),
-	     .vs_valid(vs_valid)
+	     .vs(vs)
 	     );
    
 endmodule // interpreter

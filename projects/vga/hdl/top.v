@@ -91,12 +91,48 @@ module top(
    assign vs_o = vsync;
    
 //   assign red_o =  hsync ? hcount[8 : 5] & vcount[4:1] : 0;  
-//   assign blue_o = hsync ? hcount[8 : 5] & vcount[4:1]: 0;  
-//   assign green_o = hsync ? 1 : 0;//hsync ? hcount[8: 5] & vcount[4:1] : 0;
+   //assign blue_o = hsync ? hcount[8 : 5] & vcount[4:1]: 0;  
+   //assign green_o = hsync ? 1 : 0;//hsync ? hcount[8: 5] & vcount[4:1] : 0;
 
-   assign red_o =  hsync & vsync ? 4'b1111 : 0;  
-   assign blue_o = hsync & vsync ?  4'b1111 : 0;  
-   assign green_o = hsync & vsync ? 4'b1111 : 0;//hsync ? hcount[8: 5] & vcount[4:1] : 0;
+
+   reg [9 : 0] h_bx_ctr = 0;
+   reg [9 : 0] v_bx_ctr = 0;
+   wire        draw;
+   wire        h_bx, v_vx;
+   
+   always @ (posedge pix_clk)
+     begin
+	if (draw)
+	  begin
+	     h_bx_ctr <= h_bx_ctr + 1;
+	  end
+	else
+	  begin
+	     h_bx_ctr <= 0;
+	  end
+     end // always @ (posedge clk)
+
+   always @ (posedge pix_clk)
+     begin
+	if (vblankon)
+	  begin
+	     v_bx_ctr <= v_bx_ctr + 1;
+	  end
+	else if(v_bx_ctr == 479)
+	  begin
+	     v_bx_ctr <= 0;
+	  end
+     end // always @ (posedge clk)
+
+
+   assign draw = (hsync & ~hblank) & (vsync & ~vblank);
+
+   assign h_bx = (h_bx_ctr > 310) & (h_bx_ctr < 330);
+   assign v_bx = 1;//(v_bx_ctr > 220) & (v_bx_ctr > 240);
+   
+   assign red_o =  draw & h_bx & v_bx ? 4'b1111 : 0;  
+   assign blue_o = draw & h_bx & v_bx ? 4'b1111 : 0; 
+   assign green_o = draw & h_bx & v_bx ? 4'b1111 : 0;
    
    
 endmodule // top

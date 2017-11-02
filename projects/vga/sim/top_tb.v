@@ -14,7 +14,7 @@ module top_tb;
 	$dumpfile("./build/iverilog/vga.vcd");
 	$dumpvars(0,top_tb);
 	
-	# 100000 $finish;
+	# 1000000 $finish;
 	
      end
    
