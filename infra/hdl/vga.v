@@ -8,24 +8,11 @@ module vga(
 	   output hs_o,
 	   output hs_valid
 	   );
-   /*
-   parameter H_PIX = 640;
-   parameter H_SYNC_PULSE = 40;
-   parameter H_FP = 24;
-   parameter H_BP = 128;
-   parameter H_SYNC = H_PIX + H_SYNC_PULSE + H_FP + H_BP;
-   
-   parameter V_PIX = 480;
-   parameter V_SYNC_PULSE = 3;
-   parameter V_FP = 9;
-   parameter V_BP = 28;
-   parameter V_SYNC = V_PIX + V_SYNC_PULSE + V_FP + V_BP;
-   */
    
    parameter H_PIX = 640;
    parameter H_SYNC_PULSE = 96; 
-   parameter H_FP = 16;//16; 
-   parameter H_BP = 48;//48; 
+   parameter H_FP = 16;
+   parameter H_BP = 48;
    parameter H_SYNC = H_PIX + H_SYNC_PULSE + H_FP + H_BP;
    
    parameter V_PIX = 480;
@@ -36,7 +23,7 @@ module vga(
    
    localparam H_SYNC_WIDTH = $clog2(H_SYNC);
    localparam V_SYNC_WIDTH = $clog2(V_SYNC);
-
+   
    reg [H_SYNC_WIDTH - 1 : 0] ctr_h = 0;
    reg [V_SYNC_WIDTH - 1 : 0] ctr_v = 0;
    

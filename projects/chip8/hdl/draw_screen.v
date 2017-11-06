@@ -10,16 +10,16 @@ module draw_screen(
 
    localparam X_MAX = 64;
    localparam Y_MAX = 32;
-   localparam X_ADDR_WIDTH = $clog2(X_MAX - 1);
-   localparam Y_ADDR_WIDTH = $clog2(Y_MAX - 1);
+   localparam X_ADDR_WIDTH = $clog2(X_MAX);
+   localparam Y_ADDR_WIDTH = $clog2(Y_MAX);
    
    localparam X_PIX = 640;
    localparam Y_PIX = 480;
    
-   localparam X_DIV = 10;
-   localparam Y_DIV = 15;
-   localparam X_DIV_WIDTH = $clog2(X_DIV - 1);
-   localparam Y_DIV_WIDTH = $clog2(Y_DIV - 1);
+   localparam X_DIV = X_PIX / X_MAX;
+   localparam Y_DIV = Y_PIX / Y_MAX;
+   localparam X_DIV_WIDTH = $clog2(X_DIV);
+   localparam Y_DIV_WIDTH = $clog2(Y_DIV);
 
    
    reg [X_DIV_WIDTH - 1 : 0] 					x_div_ctr = 0;
@@ -57,11 +57,11 @@ module draw_screen(
      begin
 	if (_vs_valid)
 	  begin
-	     if (y_div_ctr == Y_DIV - 1)
+	     if ( (y_div_ctr == Y_DIV - 1) & (_x == X_MAX - 1) & (x_div_ctr == X_DIV - 1) )
 	       begin
 		  y_div_ctr <= 0;
 	       end
-	     else if( (x == X_MAX - 1) & (x_div_ctr == X_DIV - 1) )
+	     else if( (_x == X_MAX - 1) & (x_div_ctr == X_DIV - 1) )
 	       begin
 		  y_div_ctr <= y_div_ctr + 1;
 	       end
@@ -86,11 +86,11 @@ module draw_screen(
 
    always @ (posedge clk)
      begin
-	if (_y == Y_MAX - 1)
+	if ( (_y == Y_MAX - 1) & (y_div_ctr == Y_DIV - 1))
 	  begin
 	     _y <= 0;
 	  end
-	else if (y_div_ctr == Y_DIV - 1)
+	else if ( (x_div_ctr == X_DIV - 1) & (y_div_ctr == Y_DIV - 1) & (_x == X_MAX - 1))
 	  begin
 	     _y <= _y + 1;
 	  end

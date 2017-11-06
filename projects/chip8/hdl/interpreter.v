@@ -65,7 +65,7 @@ module interpreter(
    wire 			  _v_we, _v_re;
    wire [V_ADDR_WIDTH - 1 : 0] 	  _v_waddr, _v_raddr;
    wire [V_DATA_WIDTH - 1 : 0] 	  _v_d, _v_q;
-
+   
    wire [11 : 0] mem_raddr;
    
    wire 	 draw_busy;
@@ -74,7 +74,7 @@ module interpreter(
    reg 		 draw_en = 0;
    wire 	 draw_col;
    wire 	 draw_out;
-
+   
    reg [15 : 0]  pc = 0;
    reg [7 : 0] 	 sp = 0;
    reg [7 : 0] 	 dt = 0;
@@ -155,8 +155,9 @@ module interpreter(
    
    assign _v_we = v_we;
 
-   always @ (state_pipe[1], mem_q_pipe[0])
-     begin
+   //always @ (state_pipe[1], mem_q_pipe[0])
+   always @ (posedge clk)
+   begin
 	if (state_pipe[1] == ST_RD_L)
 	  begin
 	     
@@ -345,7 +346,7 @@ module interpreter(
 	       end
 	  end // if (state_pipe[1] == ST_RD_U)
 
-	if (state_pipe[1] == ST_RD_L)
+	else if (state_pipe[1] == ST_RD_L)
 	  begin
 	     if (opcode_pipe[1] == OP_SE_VX_VY)
 	       begin
@@ -356,8 +357,7 @@ module interpreter(
 	       end
 	  end
 	
-	
-	if (state_pipe[1] == ST_DRAW)
+	else if (state_pipe[1] == ST_DRAW)
 	  begin
 	     v_we <= 1;
 	  end
@@ -440,8 +440,8 @@ module interpreter(
 	     .busy(draw_busy),
 	     .col(draw_col),
 	     .draw_out(draw_out),
-	     .hs(hs),
-	     .vs(vs)
+	     .hs_o(hs),
+	     .vs_o(vs)
 	     );
    
 endmodule // interpreter

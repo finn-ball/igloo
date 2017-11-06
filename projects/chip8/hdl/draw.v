@@ -9,8 +9,8 @@ module draw(
 	    output 			busy,
 	    output 			draw_out,
 	    output 			col,
-	    output 			hs,
-	    output 			vs
+	    output 			hs_o,
+	    output 			vs_o
 	    );
 
    localparam ST_IDLE        = 0;
@@ -22,6 +22,8 @@ module draw(
    
    localparam VRAM_DATA_WIDTH = 2;
    localparam VRAM_ADDR_WIDTH = 11;
+
+   localparam PIPE_LENGTH = 4;
    
    reg [ADDR_WIDTH - 1 : 0] 		_mem_raddr = 0;
    
@@ -43,15 +45,24 @@ module draw(
    wire [4 : 0] 			y_screen;
    wire [5 : 0] 			x_screen;
 
+   wire 				vs, hs;
    wire 				hs_valid, vs_valid;
    
    reg 					_col;
    
    reg 					q_d = 0;
    reg 					draw_vram;
+   reg 					_draw_out;
    
-   assign draw_out = (vs_valid & hs_valid) ? q[0] : 0;
+   reg [PIPE_LENGTH - 1 : 0] 		pipe_vs_valid = 0;
+   reg [PIPE_LENGTH - 1 : 0] 		pipe_hs_valid = 0;
+   reg [PIPE_LENGTH - 1 : 0] 		pipe_vs = 0;
+   reg [PIPE_LENGTH - 1 : 0] 		pipe_hs = 0;
    
+   assign draw_out = _draw_out;
+   assign vs_o = pipe_vs[3];
+   assign hs_o = pipe_hs[3];
+
    assign col = _col;
    
    assign raddr = state == ST_DRAW_VRAM ? draw_vram_raddr : draw_screen_raddr;
@@ -59,8 +70,37 @@ module draw(
    assign draw_screen_raddr = { {y_screen} , {x_screen} };
    assign mem_raddr = _mem_raddr;
 
-   assign busy = en | ~(state == ST_IDLE);
+   assign busy = vs | en | ~(state == ST_IDLE);
    
+   always @ (posedge clk)
+     begin
+	if (pipe_vs_valid[2] & pipe_hs_valid[2])
+	  begin
+	     _draw_out <= q[0];
+	  end
+	else
+	  begin
+	     _draw_out <= 0;
+	  end
+     end // always @ (posedge clk)
+   
+   always @*
+     begin
+	pipe_vs_valid[0] <= vs_valid;
+	pipe_hs_valid[0] <= hs_valid;
+	pipe_vs[0] <= vs;
+	pipe_hs[0] <= hs;
+     end
+
+   always @ (posedge clk)
+     begin
+	pipe_vs_valid[PIPE_LENGTH - 1 : 1] <= pipe_vs_valid[PIPE_LENGTH - 2 : 0];
+	pipe_hs_valid[PIPE_LENGTH - 1 : 1] <= pipe_hs_valid[PIPE_LENGTH - 2 : 0];
+
+	pipe_vs[PIPE_LENGTH - 1 : 1] <= pipe_vs[PIPE_LENGTH - 2 : 0];
+	pipe_hs[PIPE_LENGTH - 1 : 1] <= pipe_hs[PIPE_LENGTH - 2 : 0];
+     end
+      
    always @ (posedge clk)
      begin
 	case (state)
@@ -193,7 +233,7 @@ module draw(
      begin
 	we <= state == ST_DRAW_VRAM;
      end
-
+   
    dram_2048x2 vram (
 		     .w_clk(clk),
 		     .r_clk(clk),
