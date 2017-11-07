@@ -21,7 +21,7 @@ module top_tb;
 	
 	rst_i <= 0;
 	
-	# 100000 $finish;
+	# 1000 $finish;
 	
      end // initial begin
 

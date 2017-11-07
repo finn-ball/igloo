@@ -14,8 +14,8 @@ module interpreter(
    localparam ST_IDLE        = 0;
    localparam ST_RD_L        = 1;
    localparam ST_RD_U        = 2;
-   localparam ST_DRAW        = 3;
-   localparam ST_OP          = 4;
+   localparam ST_OP          = 3;
+   localparam ST_DRAW        = 4;
    
    localparam OP_SYS            = 0;
    localparam OP_JP_ADDR        = 1;
@@ -45,7 +45,7 @@ module interpreter(
    wire [DATA_WIDTH - 1 : 0] 	  d, mem_q;
    wire [ADDR_WIDTH - 1 : 0] 	  waddr, raddr;
    wire 			  we, re;
-   reg [ADDR_WIDTH - 1 : 0] 	  _raddr = 512;
+   reg [ADDR_WIDTH - 1 : 0] 	  pc = 512;
    
    localparam PIPE_LENGTH = 5;
    
@@ -54,6 +54,7 @@ module interpreter(
    reg [10 : 0] 		  opcode_pipe [PIPE_LENGTH - 1 : 0];
    reg [V_DATA_WIDTH - 1 : 0] 	  v_q_pipe [PIPE_LENGTH - 1 : 0];
    reg [15 : 0] 		  I_pipe [PIPE_LENGTH - 1 : 0];
+   reg [15 : 0] 		  dec_to_bcd_q_pipe [PIPE_LENGTH - 1 : 0];
    
    localparam V_ADDR_WIDTH = 4;
    localparam V_DATA_WIDTH = 8;
@@ -75,19 +76,22 @@ module interpreter(
    wire 	 draw_col;
    wire 	 draw_out;
    
-   reg [15 : 0]  pc = 0;
    reg [7 : 0] 	 sp = 0;
    reg [7 : 0] 	 dt = 0;
+
+   reg [9 : 0]  dec_to_bcd_raddr;
+   wire [15 : 0] dec_to_bcd_q;
    
-   assign raddr = state == ST_DRAW ? mem_raddr :  _raddr;
+   assign raddr = state == ST_DRAW ? mem_raddr :  pc;
    
-   always @(mem_q, state, opcode, v_q, I)
+   always @(mem_q, state, opcode, v_q, I, dec_to_bcd_q)
      begin
 	mem_q_pipe[0] <= mem_q;
 	state_pipe[0] <= state;
 	opcode_pipe[0] <= opcode;
 	v_q_pipe[0] <= v_q;
 	I_pipe[0] <= I;
+	dec_to_bcd_q_pipe[0] <= dec_to_bcd_q;
      end
    
    genvar 				       i;
@@ -101,6 +105,7 @@ module interpreter(
 		opcode_pipe[i] <= opcode_pipe[i - 1];
 		v_q_pipe[i] <= v_q_pipe[i - 1];
 		I_pipe[i] <= I_pipe[i - 1];
+		dec_to_bcd_q_pipe[i] <= dec_to_bcd_q_pipe[i - 1];
 	     end
 	end      
    endgenerate
@@ -126,15 +131,27 @@ module interpreter(
 		 end
 	       else
 		 begin
-		    state <= ST_RD_L;
+		    state <= ST_OP;
 		 end
-	    end // case: ST_RD_U
+	    end
 
 	  ST_OP:
 	    begin
-	       state <= ST_RD_L;
+	       if (opcode_pipe[0] == (OP_CALL_ADDR))
+		 begin
+		    state <= ST_IDLE;
+		 end
+	       else
+		 begin
+		    state <= ST_RD_L;
+		 end
+	    end // case: ST_OP
+	  /*
+	  ST_BCD:
+	    begin
+
 	    end
-	  
+	  */
 	  ST_DRAW:
 	    begin
 	       if (~draw_busy & (mem_q_pipe[1][7 : 4] != 4'hD) & (mem_q_pipe[2][7 : 4] != 4'hD ))
@@ -147,170 +164,184 @@ module interpreter(
    
    always @ (posedge clk)
      begin
-	if ( state == ST_RD_L || (state == ST_RD_U) )
+
+	if ( ( state_pipe[0] == ST_RD_L | (state_pipe[0] == ST_RD_U)) )
 	  begin
-	     _raddr <= _raddr + 1;
+	     pc <= pc + 1;
 	  end
-     end
+	
+	else
+	  
+	  begin
+	     case (opcode_pipe[1])
+
+	       OP_JP_ADDR:
+		 begin
+		    if (state_pipe[0] == ST_OP)
+		      begin
+			 pc[11 : 8] <= mem_q_pipe[1][3 : 0];
+			 pc[7 : 0] <= mem_q_pipe[0];
+		      end		    
+		 end
+	       
+	       OP_CALL_ADDR: // incr sp
+		 begin
+		    if (state_pipe[0] == ST_OP)
+		      begin
+			 pc[11 : 8] <= mem_q_pipe[1][3 : 0];
+			 pc[7 : 0] <= mem_q_pipe[0];
+		      end		    
+		 end // case: OP_CALL_ADDR
+	       
+	       OP_SE_VX_BYTE:
+		 begin
+		    if (state_pipe[0] == ST_OP)
+		      begin
+			 if (v_q == mem_q_pipe[0][7 : 0])
+			   begin
+			      pc <= pc + 2;
+			   end
+		      end		    		    
+		 end
+	       
+	       OP_SNE_VX_BYTE:
+		 begin
+		    if (state_pipe[0] == ST_OP)
+		      begin
+			 if (v_q != mem_q_pipe[0][7 : 0])
+			   begin
+			      pc <= pc + 2;
+			   end
+		      end
+		 end
+	       
+	       OP_SE_VX_VY: // check
+		 begin
+		    if (state_pipe[0] == ST_OP)
+		      begin
+			 if(v_q_pipe[0] == v_q_pipe[1])
+			   begin
+			      pc <= pc + 2;
+			   end
+		      end
+		 end
+	     endcase // case (opcode_pipe[2])
+	  end // else: !if( ( state_pipe[0] == ST_RD_L ) )
+	
+     end // if (state_pipe[1] == ST_RD_U)   
    
    assign _v_we = v_we;
 
-   //always @ (state_pipe[1], mem_q_pipe[0])
-   always @ (posedge clk)
-   begin
-	if (state_pipe[1] == ST_RD_L)
-	  begin
-	     
-	     case(mem_q_pipe[0][7 : 4])
-
-	       4'h0:
-		 opcode <= OP_SYS;
-
-	       4'h1:
-		 opcode <= OP_JP_ADDR;
-	       
-	       4'h2:
-		 opcode <= OP_CALL_ADDR;
-	       
-	       4'h3:
-		 opcode <= OP_SE_VX_BYTE;
-	       
-	       4'h4:
-		 opcode <= OP_SNE_VX_BYTE;
-
-	       4'h5:
-		 opcode <= OP_SE_VX_VY;
-	       
-	       4'h6:
-		 opcode <= OP_LD_VX_BYTE;
-	       
-	       4'h7:
-		 opcode <= OP_ADD_VX_BYTE;
-	       
-	       4'h8:
-		 opcode <= OP_VX_VY;
-
-	       4'h9:
-		 opcode <= OP_SNE_VX_VY;
-	     
-	       4'hA:
-		 opcode <= OP_LD_I_ADDR;
-	       
-	       4'hB:
-		 opcode <= OP_JP_V0_ADDR;
-
-	       4'hC:
-		 opcode <= OP_RND_VX_BYTE;
-	       
-	       4'hD:
-		 opcode <= OP_DRW_VX_VY_NIB;
-	       
-	       4'hE:
-		 opcode <= OP_SKP_VX;
-	       
-	       4'hF:
-		 opcode <= OP_LD_VX;
-	       
-	     endcase // case (mem_q_pipe[0][7 : 4])
-	     
-	  end
+   always @ (mem_q_pipe[0])
+     begin
+	case(mem_q_pipe[0][7 : 4])
+	  
+	  4'h0:
+	    opcode <= OP_SYS;
+	  
+	  4'h1:
+	    opcode <= OP_JP_ADDR;
+	  
+	  4'h2:
+	    opcode <= OP_CALL_ADDR;
+	  
+	  4'h3:
+	    opcode <= OP_SE_VX_BYTE;
+	  
+	  4'h4:
+	    opcode <= OP_SNE_VX_BYTE;
+	  
+	  4'h5:
+	    opcode <= OP_SE_VX_VY;
+	  
+	  4'h6:
+	    opcode <= OP_LD_VX_BYTE;
+	  
+	  4'h7:
+	    opcode <= OP_ADD_VX_BYTE;
+	  
+	  4'h8:
+	    opcode <= OP_VX_VY;
+	  
+	  4'h9:
+	    opcode <= OP_SNE_VX_VY;
+	  
+	  4'hA:
+	    opcode <= OP_LD_I_ADDR;
+	  
+	  4'hB:
+	    opcode <= OP_JP_V0_ADDR;
+	  
+	  4'hC:
+	    opcode <= OP_RND_VX_BYTE;
+	  
+	  4'hD:
+	    opcode <= OP_DRW_VX_VY_NIB;
+	  
+	  4'hE:
+	    opcode <= OP_SKP_VX;
+	  
+	  4'hF:
+	    opcode <= OP_LD_VX;
+	  
+	endcase // case (mem_q_pipe[0][7 : 4])
      end
    
    always @ (posedge clk)
      begin
-	
-	if (state_pipe[1] == ST_RD_L)
-	  begin
 
+	if (state_pipe[1] == ST_DRAW)
+	  begin
+	     v_waddr <= 4'hF;
+	     v_d <= draw_col;
+	  end
+	
+	else if (state_pipe[1] == ST_RD_L)
+	  begin
+	     
 	     case(opcode_pipe[0])
 	       OP_CALL_ADDR:
-		 begin
-		    pc[11 : 8] <= mem_q_pipe[0][3 : 0];
-		    sp <= sp + 1;
-		 end
+		 sp <= sp + 1;
 	       
 	       OP_SE_VX_BYTE:
-		 begin
-		    v_raddr <= mem_q_pipe[0][3 : 0];
-		 end
-
+		 v_raddr <= mem_q_pipe[0][3 : 0];
+	       
 	       OP_SNE_VX_BYTE:
-		 begin
-		    v_raddr <= mem_q_pipe[0][3 : 0];
-		 end
+		 v_raddr <= mem_q_pipe[0][3 : 0];
 	       
 	       OP_SE_VX_VY:
-		 begin
-		    v_raddr <= mem_q_pipe[0][3 : 0];
-		 end
+		 v_raddr <= mem_q_pipe[0][3 : 0];
 	       
 	       OP_LD_VX_BYTE:
-		 begin
-		    v_waddr <= mem_q_pipe[0][3 : 0];
-		 end
-	       	       
-	       OP_LD_I_ADDR:
-		 begin
-		    
-		 end
+		 v_waddr <= mem_q_pipe[0][3 : 0];
 	       
 	       OP_DRW_VX_VY_NIB:
-		 begin
-		    v_raddr <= mem_q_pipe[0][3 : 0];
-		 end
-	       
+		 v_raddr <= mem_q_pipe[0][3 : 0];
+	       	       
+	       OP_LD_I_ADDR:
+		 I[11 : 0] <= { {mem_q_pipe[1][3 : 0]}, mem_q_pipe[0][7 : 0] };
+
 	       OP_LD_VX:
-		 begin
-		    v_raddr <= mem_q_pipe[0][3 : 0];
-		 end
-	     endcase // case (mem_q_pipe[0][7 : 4])
-	     
+		 v_raddr <= mem_q_pipe[0][3 : 0];
+
+	     endcase // case (opcode_pipe[0])
 	  end // if (state_pipe[1] == ST_RD_L)
 	
 	else if (state_pipe[1] == ST_RD_U)
 	  begin
-	     case (opcode_pipe[1])
-		  
-	       OP_CALL_ADDR:
-		 begin
-		    pc[7 : 0] <= mem_q_pipe[0][7 : 4];
-		 end
-
-	       OP_SE_VX_BYTE:
-		 begin
-		    if (v_q == mem_q_pipe[0][7 : 0])
-		      begin
-			 pc <= pc + 2;
-		      end
-		 end
-	       
-	       OP_SNE_VX_BYTE:
-		 begin
-		    if (v_q != mem_q_pipe[0][7 : 0])
-		      begin
-			 pc <= pc + 2;
-		      end
-		 end
-	       
-	       OP_LD_VX_BYTE:
-		 begin
-		    v_d <= mem_q_pipe[0];
-		 end
+	     case(opcode_pipe[1])
 	       
 	       OP_SE_VX_VY:
-		 begin
-		    v_raddr <= mem_q_pipe[0][3 : 0];//
-		 end
-
-	       OP_LD_I_ADDR:
-		 begin
-		    I[11 : 0] <= { {mem_q_pipe[1][3 : 0]}, mem_q_pipe[0][7 : 0] };
-		 end
+		 v_raddr <= mem_q_pipe[0][3 : 0];//
+	       
+	       OP_LD_VX_BYTE:
+		 v_d <= mem_q_pipe[0];
 	       
 	       OP_DRW_VX_VY_NIB:
-		 begin
-		    v_raddr <= mem_q_pipe[0][7  : 4];
-		 end
+		 v_raddr <= mem_q_pipe[0][7  : 4];
+	       	       
+	       OP_LD_I_ADDR:
+		 I[11 : 0] <= { {mem_q_pipe[1][3 : 0]}, mem_q_pipe[0][7 : 0] };
 
 	       OP_LD_VX:
 		 begin
@@ -319,43 +350,33 @@ module interpreter(
 			 v_d <= dt;
 			 v_waddr <= mem_q_pipe[1][3 : 0];
 		      end
-		 end 
-	     
+		    if (mem_q_pipe[0] == 8'h33)
+		      begin
+			 v_raddr <= I;
+		      end
+		 end
 	     endcase // case (opcode_pipe[0])
 	     
-	  end // if (state_pipe[1] == ST_RD_U)
-
-	else if (state_pipe[1] == ST_DRAW)
-	  begin
-	     v_waddr <= 4'hF;
-	     v_d <= draw_col;
-	  end
+	  end // else: !if(state_pipe[1] == ST_DRAW)
      end // always @ (posedge clk)
    
    always @ (posedge clk)
      begin
 	if (state_pipe[1] == ST_RD_U)
 	  begin
-	     if (opcode_pipe[1] == OP_LD_VX_BYTE)
-	       begin
+	     case(opcode_pipe[1])
+	       
+	       OP_LD_VX_BYTE:
 		  v_we <= 1;
-	       end
-	     if (opcode_pipe[1] == OP_LD_VX)
-	       begin
+	       
+	       OP_LD_VX:
 		  v_we <= mem_q_pipe[0] == 8'h07;
-	       end
-	  end // if (state_pipe[1] == ST_RD_U)
 
-	else if (state_pipe[1] == ST_RD_L)
-	  begin
-	     if (opcode_pipe[1] == OP_SE_VX_VY)
-	       begin
-		  if (v_q_pipe[0] == v_q_pipe[1])
-		    begin
-		       pc <= pc + 2;
-		    end
-	       end
-	  end
+	       default:
+		 v_we <= 0;
+	       
+	     endcase // case (opcode_pipe[1])
+	  end // if (state_pipe[1] == ST_RD_U)
 	
 	else if (state_pipe[1] == ST_DRAW)
 	  begin
@@ -366,6 +387,7 @@ module interpreter(
 	  begin
 	     v_we <= 0;
 	  end
+	
      end // always @ (posedge clk)
    
    always @ (posedge clk)
@@ -382,12 +404,21 @@ module interpreter(
 
    always @ (posedge clk)
      begin
-	draw_en <= state_pipe[2] == ST_RD_U & opcode_pipe[2] == OP_DRW_VX_VY_NIB;
-     end
-
+	if ( (state_pipe[2] == ST_RD_U) & (opcode_pipe[2] == OP_DRW_VX_VY_NIB))
+	  begin
+	     draw_en <= 1;
+	  end
+	else
+	  begin
+	     draw_en <= 0;
+	  end
+     end // always @ (posedge clk)
+   
    assign vram_start_pix[5 : 0] = v_q_pipe[1][5 : 0]; 
    assign vram_start_pix[10 : 6] = v_q_pipe[0][4 : 0];
    assign vram_nibbles[3 : 0] = mem_q_pipe[2][3 : 0]; 
+
+   
    
    mem#(
 	.DATA_WIDTH(DATA_WIDTH),
@@ -419,11 +450,28 @@ module interpreter(
 	      .raddr(v_raddr),
 	      .q(_v_q)
 	      );
-   
+
    always @ (_v_q)
      begin
 	v_q <= _v_q;
      end
+   
+   always @ (posedge clk)
+     begin
+	dec_to_bcd_raddr <= v_q_pipe[0];
+     end
+
+   rom#(
+	.ADDR_WIDTH(10),
+	.DATA_WIDTH(16),
+	.INIT(1),
+	.FILE_NAME("projects/chip8/cfg/dec_to_bcd.hex"),
+	.FILE_STOP(1000)
+	) dec_to_bcd (
+		      .clk(clk),
+		      .raddr(dec_to_bcd_raddr),
+		      .q(dec_to_bcd_q)
+		      );
    
    assign red = draw_out ? 4'b1111 : 0 ;
    assign blue = draw_out ? 4'b1111 : 0 ;

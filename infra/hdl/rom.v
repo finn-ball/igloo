@@ -6,8 +6,11 @@ module rom(
    
    parameter ADDR_WIDTH = 9;
    parameter DATA_WIDTH = 8;
-   parameter FILE_NAME = "";
+
    parameter INIT = 0;
+   parameter FILE_NAME = "";
+   parameter FILE_START = 0;
+   parameter FILE_STOP = 512;
    
    localparam DEPTH = 1  << ADDR_WIDTH;
    
@@ -18,7 +21,7 @@ module rom(
      begin
 	if(INIT)
 	  begin
-	     $readmemh(FILE_NAME, mem);
+	     $readmemh(FILE_NAME, mem, FILE_START, FILE_STOP - 1);
 	  end
      end
    
