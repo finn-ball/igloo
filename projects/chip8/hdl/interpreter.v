@@ -76,8 +76,10 @@ module interpreter(
    wire 	 draw_col;
    wire 	 draw_out;
    
-   reg [7 : 0] 	 sp = 0;
+   reg [15 : 0]  sp = 0;
    reg [7 : 0] 	 dt = 0;
+
+   reg [3 : 0] 	 ctr_op = 0;
 
    reg [9 : 0]  dec_to_bcd_raddr;
    wire [15 : 0] dec_to_bcd_q;
@@ -137,21 +139,12 @@ module interpreter(
 
 	  ST_OP:
 	    begin
-	       if (opcode_pipe[0] == (OP_CALL_ADDR))
-		 begin
-		    state <= ST_IDLE;
-		 end
-	       else
+	       if (ctr_op == 0)
 		 begin
 		    state <= ST_RD_L;
 		 end
 	    end // case: ST_OP
-	  /*
-	  ST_BCD:
-	    begin
-
-	    end
-	  */
+	  
 	  ST_DRAW:
 	    begin
 	       if (~draw_busy & (mem_q_pipe[1][7 : 4] != 4'hD) & (mem_q_pipe[2][7 : 4] != 4'hD ))
@@ -164,13 +157,32 @@ module interpreter(
    
    always @ (posedge clk)
      begin
+	if (state_pipe[0] == ST_RD_U)
+	  begin
+	     if (opcode_pipe[1] == OP_CALL_ADDR)
+	       begin
+		  ctr_op <= 1;
+	       end
+	     else if (opcode_pipe[1] == OP_LD_VX)
+	       begin
+		  ctr_op <= 4;
+	       end
+	  end
+	else if (ctr_op > 0)
+	  begin
+	     ctr_op <= ctr_op - 1;
+	  end
+     end
+   
+   always @ (posedge clk)
+     begin
 
 	if ( ( state_pipe[0] == ST_RD_L | (state_pipe[0] == ST_RD_U)) )
 	  begin
 	     pc <= pc + 1;
 	  end
 	
-	else
+	else if (state_pipe[1] == ST_RD_U)
 	  
 	  begin
 	     case (opcode_pipe[1])
@@ -418,8 +430,6 @@ module interpreter(
    assign vram_start_pix[10 : 6] = v_q_pipe[0][4 : 0];
    assign vram_nibbles[3 : 0] = mem_q_pipe[2][3 : 0]; 
 
-   
-   
    mem#(
 	.DATA_WIDTH(DATA_WIDTH),
 	.ADDR_WIDTH(ADDR_WIDTH),
