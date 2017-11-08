@@ -17,8 +17,9 @@ module interpreter(
    localparam ST_OP          = 3;
    localparam ST_DRAW        = 4;
 
-   localparam ST_OP_IDLE    = 0;
+   localparam ST_OP_IDLE      = 0;
    localparam ST_OP_LD_B_VX   = 1;
+   localparam ST_OP_LD_VX_I   = 2;
    
    localparam OP_SYS            = 0;
    localparam OP_JP_ADDR        = 1;
@@ -147,7 +148,7 @@ module interpreter(
 
 	  ST_OP:
 	    begin
-	       if (ctr_op == 0)
+	       if ( ctr_op == 0 )//& (opcode_pipe[1] != OP_LD_VX) & (state_pipe[1] != ST_RD_U) )
 		 begin
 		    state <= ST_RD_L;
 		 end
@@ -173,8 +174,18 @@ module interpreter(
 	       end
 	     else if (opcode_pipe[1] == OP_LD_VX)
 	       begin
-		  ctr_op <= 5;
+		  ctr_op <= 1;
 	       end
+	  end // if (state_pipe[0] == ST_RD_U)
+	else if (state_pipe[1] == ST_RD_U)
+	  begin
+	     if (opcode_pipe[1] == OP_LD_VX)
+	       begin
+		  if (mem_q_pipe[0] == 8'h33)
+		    begin
+		       ctr_op <= 4;
+		    end
+	       end 
 	  end
 	else if (ctr_op > 0)
 	  begin
@@ -337,7 +348,7 @@ module interpreter(
 	       
 	       OP_LD_VX:
 		 v_raddr <= mem_q_pipe[0][3 : 0];
-
+	       
 	     endcase // case (opcode_pipe[0])
 	  end // if (state_pipe[1] == ST_RD_L)
 	
@@ -367,9 +378,13 @@ module interpreter(
 			 v_d <= dt;
 			 v_waddr <= mem_q_pipe[1][3 : 0];
 		      end
-		    if (mem_q_pipe[0] == 8'h33)
+		    else if (mem_q_pipe[0] == 8'h33)
 		      begin
 			 waddr <= I[11 : 0];
+		      end
+		    else if (mem_q_pipe[0] == 8'h65)
+		      begin
+			 v_raddr <= I[V_ADDR_WIDTH - 1 : 0];
 		      end
 		 end
 	     endcase // case (opcode_pipe[0])
@@ -400,8 +415,7 @@ module interpreter(
 		      begin
 			 waddr <= waddr + 1;
 		      end
-		    
-		 end
+		 end // case: ST_OP_LD_B_VX
 	       
 	     endcase // case (state_op)
 	  end // else: !if(state_pipe[1] == ST_RD_U)
@@ -431,11 +445,27 @@ module interpreter(
 	    begin
 	       if ( (state_pipe[1] == ST_RD_U) & (opcode_pipe[1] == OP_LD_VX))
 		 begin
-		    state_op <= ST_OP_LD_B_VX;
+		    if (mem_q_pipe[0] == 8'h33)
+		      begin
+			 state_op <= ST_OP_LD_B_VX;
+		      end
+		    else if (mem_q_pipe[0] == 8'h65)
+		      begin
+			 state_op <= ST_OP_LD_VX_I;
+		      end
 		 end
+	       
 	    end
 
 	  ST_OP_LD_B_VX:
+	    begin
+	       if (ctr_op == 1)
+		 begin
+		    state_op <= ST_OP_IDLE;
+		 end
+	    end
+
+	  ST_OP_LD_VX_I:
 	    begin
 	       if (ctr_op == 1)
 		 begin
