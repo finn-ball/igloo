@@ -10,7 +10,7 @@ module rom(
    parameter INIT = 0;
    parameter FILE_NAME = "";
    parameter FILE_START = 0;
-   parameter FILE_STOP = 512;
+   parameter FILE_STOP = 1 << ADDR_WIDTH;
    
    localparam DEPTH = 1  << ADDR_WIDTH;
    
