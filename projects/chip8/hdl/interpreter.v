@@ -20,6 +20,7 @@ module interpreter(
    localparam ST_OP_IDLE      = 0;
    localparam ST_OP_LD_B_VX   = 1;
    localparam ST_OP_LD_VX_I   = 2;
+   localparam ST_OP_LD_F_VX   = 3;
    
    localparam OP_SYS            = 0;
    localparam OP_JP_ADDR        = 1;
@@ -50,7 +51,7 @@ module interpreter(
    wire [DATA_WIDTH - 1 : 0] 	  mem_q;
    reg [DATA_WIDTH - 1 : 0] 	  mem_d = 0;
    
-   wire [ADDR_WIDTH - 1 : 0] 	  raddr;
+   reg [ADDR_WIDTH - 1 : 0] 	  mem_raddr;
    reg [ADDR_WIDTH - 1 : 0] 	  waddr = 0;
    wire 			  re;
    reg 				  we = 0;
@@ -76,7 +77,7 @@ module interpreter(
    wire [V_ADDR_WIDTH - 1 : 0] 	  _v_waddr, _v_raddr;
    wire [V_DATA_WIDTH - 1 : 0] 	  _v_d, _v_q;
    
-   wire [11 : 0] mem_raddr;
+   wire [ADDR_WIDTH - 1 : 0] 	  draw_raddr;
    
    wire 	 draw_busy;
    wire [10 : 0] vram_start_pix;
@@ -89,11 +90,36 @@ module interpreter(
    reg [7 : 0] 	 dt = 0;
 
    reg [3 : 0] 	 ctr_op = 0;
-
-   reg [9 : 0]  dec_to_bcd_raddr;
-   wire [15 : 0] dec_to_bcd_q;
    
-   assign raddr = state == ST_DRAW ? mem_raddr :  pc;
+   reg [7 : 0] 	 dec_to_bcd_raddr;
+   wire [11 : 0] dec_to_bcd_q;
+
+   reg [ADDR_WIDTH - 1 : 0] dump_raddr = 0;
+
+   wire [7 : 0] 	    sprite_location_q;
+   
+   
+   assign red = draw_out ? 4'b1111 : 0 ;
+   assign blue = draw_out ? 4'b1111 : 0 ;
+   assign green = draw_out ? 4'b1111 : 0;
+   
+   always @ (state, state_op, draw_raddr, pc, dump_raddr)
+     begin
+	if (state == ST_DRAW)
+	  begin
+	     mem_raddr <= draw_raddr;
+	  end
+	
+	else if (state_op == ST_OP_LD_VX_I)
+	  begin
+	     mem_raddr <= dump_raddr;
+	  end
+	
+	else
+	  begin
+	     mem_raddr <= pc;
+	  end   
+     end
    
    always @(mem_q, state, opcode, v_q, I, dec_to_bcd_q)
      begin
@@ -148,7 +174,7 @@ module interpreter(
 
 	  ST_OP:
 	    begin
-	       if ( ctr_op == 0 )//& (opcode_pipe[1] != OP_LD_VX) & (state_pipe[1] != ST_RD_U) )
+	       if (ctr_op == 0)
 		 begin
 		    state <= ST_RD_L;
 		 end
@@ -184,6 +210,10 @@ module interpreter(
 		  if (mem_q_pipe[0] == 8'h33)
 		    begin
 		       ctr_op <= 4;
+		    end
+		  else if (mem_q_pipe[0] == 8'h65)
+		    begin
+		       ctr_op <= mem_q_pipe[2][3 : 0] + 2;
 		    end
 	       end 
 	  end
@@ -357,7 +387,7 @@ module interpreter(
 	     case(opcode_pipe[1])
 	       
 	       OP_SE_VX_VY:
-		 v_raddr <= mem_q_pipe[0][3 : 0];//
+		 v_raddr <= mem_q_pipe[0][3 : 0];
 	       
 	       OP_LD_VX_BYTE:
 		 begin
@@ -378,13 +408,21 @@ module interpreter(
 			 v_d <= dt;
 			 v_waddr <= mem_q_pipe[1][3 : 0];
 		      end
+		    else if (mem_q_pipe[0] == 8'h1E)
+		      begin
+			 I <= (I + v_q_pipe[0]);
+		      end
+		    else if (mem_q_pipe[0] == 8'h29)
+		      begin
+		      end
 		    else if (mem_q_pipe[0] == 8'h33)
 		      begin
 			 waddr <= I[11 : 0];
 		      end
 		    else if (mem_q_pipe[0] == 8'h65)
 		      begin
-			 v_raddr <= I[V_ADDR_WIDTH - 1 : 0];
+			 v_waddr <= 0;
+			 dump_raddr <= I[ADDR_WIDTH - 1 : 0];
 		      end
 		 end
 	     endcase // case (opcode_pipe[0])
@@ -416,6 +454,19 @@ module interpreter(
 			 waddr <= waddr + 1;
 		      end
 		 end // case: ST_OP_LD_B_VX
+
+	       ST_OP_LD_VX_I:
+		 begin
+		    v_waddr <= v_waddr + v_we;
+		    v_d <= mem_q_pipe[0];
+		    dump_raddr <= dump_raddr + 1;
+		 end
+
+	       ST_OP_LD_F_VX:
+		 begin
+		    I[7 : 0] <= sprite_location_q;
+		    I[15 : 8] <= 0;
+		 end
 	       
 	     endcase // case (state_op)
 	  end // else: !if(state_pipe[1] == ST_RD_U)
@@ -449,12 +500,15 @@ module interpreter(
 		      begin
 			 state_op <= ST_OP_LD_B_VX;
 		      end
+		    else if (mem_q_pipe[0] == 8'h29)
+		      begin
+			 state_op <= ST_OP_LD_F_VX;
+		      end
 		    else if (mem_q_pipe[0] == 8'h65)
 		      begin
 			 state_op <= ST_OP_LD_VX_I;
 		      end
 		 end
-	       
 	    end
 
 	  ST_OP_LD_B_VX:
@@ -464,6 +518,9 @@ module interpreter(
 		    state_op <= ST_OP_IDLE;
 		 end
 	    end
+
+	  ST_OP_LD_F_VX:
+	    state_op <= ST_OP_IDLE;
 
 	  ST_OP_LD_VX_I:
 	    begin
@@ -498,12 +555,22 @@ module interpreter(
 	  begin
 	     v_we <= 1;
 	  end
-	
+
 	else
-	  begin
-	     v_we <= 0;
-	  end
-	
+	  case(state_op)
+
+	    ST_OP_LD_VX_I:
+	      begin
+		 if (state_pipe[2] != ST_RD_U)
+		   begin
+		      v_we <= 1;
+		   end
+	      end
+
+	    default:
+	      v_we <= 0;
+	    
+	  endcase
      end // always @ (posedge clk)
    
    always @ (posedge clk)
@@ -548,7 +615,7 @@ module interpreter(
 	       .waddr(waddr),
 	       .d(mem_d),
 	       .re(1'b1),
-	       .raddr(raddr),
+	       .raddr(mem_raddr),
 	       .q(mem_q)
 	       );
    
@@ -576,20 +643,26 @@ module interpreter(
      end
 
    rom#(
-	.ADDR_WIDTH(10),
-	.DATA_WIDTH(16),
+	.ADDR_WIDTH(8),
+	.DATA_WIDTH(12),
 	.INIT(1),
-	.FILE_NAME("projects/chip8/cfg/dec_to_bcd.hex"),
-	.FILE_STOP(1000)
+	.FILE_NAME("projects/chip8/cfg/dec_to_bcd.hex")
 	) dec_to_bcd (
 		      .clk(clk),
 		      .raddr(dec_to_bcd_raddr),
 		      .q(dec_to_bcd_q)
 		      );
    
-   assign red = draw_out ? 4'b1111 : 0 ;
-   assign blue = draw_out ? 4'b1111 : 0 ;
-   assign green = draw_out ? 4'b1111 : 0;
+   rom#(
+	.ADDR_WIDTH(4),
+	.DATA_WIDTH(8),
+	.INIT(1),
+	.FILE_NAME("projects/chip8/cfg/sprite_location.hex")
+	) sprite_location (
+			   .clk(clk),
+			   .raddr(v_q_pipe[1][3 : 0]),
+			   .q(sprite_location_q)
+			   );
    
    draw draw(
 	     .clk(clk),
@@ -597,7 +670,7 @@ module interpreter(
 	     .I(I),
 	     .start_pix(vram_start_pix),
 	     .start_nibbles(vram_nibbles),
-	     .mem_raddr(mem_raddr),
+	     .mem_raddr(draw_raddr),
 	     .mem_d(mem_q),
 	     .busy(draw_busy),
 	     .col(draw_col),
