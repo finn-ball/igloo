@@ -16,6 +16,9 @@ module interpreter(
    localparam ST_RD_U        = 2;
    localparam ST_OP          = 3;
    localparam ST_DRAW        = 4;
+
+   localparam ST_OP_IDLE    = 0;
+   localparam ST_OP_LD_B_VX   = 1;
    
    localparam OP_SYS            = 0;
    localparam OP_JP_ADDR        = 1;
@@ -39,12 +42,17 @@ module interpreter(
    
    reg [3 : 0] 			  state = ST_IDLE;
    reg [3 : 0] 			  opcode = OP_SYS;
+   reg [3 : 0] 			  state_op = ST_OP_IDLE;
    
    reg [15 : 0] 		  I = 0;
    
-   wire [DATA_WIDTH - 1 : 0] 	  d, mem_q;
-   wire [ADDR_WIDTH - 1 : 0] 	  waddr, raddr;
-   wire 			  we, re;
+   wire [DATA_WIDTH - 1 : 0] 	  mem_q;
+   reg [DATA_WIDTH - 1 : 0] 	  mem_d = 0;
+   
+   wire [ADDR_WIDTH - 1 : 0] 	  raddr;
+   reg [ADDR_WIDTH - 1 : 0] 	  waddr = 0;
+   wire 			  re;
+   reg 				  we = 0;
    reg [ADDR_WIDTH - 1 : 0] 	  pc = 512;
    
    localparam PIPE_LENGTH = 5;
@@ -165,7 +173,7 @@ module interpreter(
 	       end
 	     else if (opcode_pipe[1] == OP_LD_VX)
 	       begin
-		  ctr_op <= 4;
+		  ctr_op <= 5;
 	       end
 	  end
 	else if (ctr_op > 0)
@@ -324,15 +332,9 @@ module interpreter(
 	       OP_SE_VX_VY:
 		 v_raddr <= mem_q_pipe[0][3 : 0];
 	       
-	       OP_LD_VX_BYTE:
-		 v_waddr <= mem_q_pipe[0][3 : 0];
-	       
 	       OP_DRW_VX_VY_NIB:
 		 v_raddr <= mem_q_pipe[0][3 : 0];
-	       	       
-	       OP_LD_I_ADDR:
-		 I[11 : 0] <= { {mem_q_pipe[1][3 : 0]}, mem_q_pipe[0][7 : 0] };
-
+	       
 	       OP_LD_VX:
 		 v_raddr <= mem_q_pipe[0][3 : 0];
 
@@ -347,7 +349,10 @@ module interpreter(
 		 v_raddr <= mem_q_pipe[0][3 : 0];//
 	       
 	       OP_LD_VX_BYTE:
-		 v_d <= mem_q_pipe[0];
+		 begin
+		    v_waddr <= mem_q_pipe[1][3 : 0];
+		    v_d <= mem_q_pipe[0];
+		 end
 	       
 	       OP_DRW_VX_VY_NIB:
 		 v_raddr <= mem_q_pipe[0][7  : 4];
@@ -364,13 +369,82 @@ module interpreter(
 		      end
 		    if (mem_q_pipe[0] == 8'h33)
 		      begin
-			 v_raddr <= I;
+			 waddr <= I[11 : 0];
 		      end
 		 end
 	     endcase // case (opcode_pipe[0])
 	     
-	  end // else: !if(state_pipe[1] == ST_DRAW)
+	  end // if (state_pipe[1] == ST_RD_U)
+
+	else
+	  begin
+	     
+	     case(state_op)
+
+	       ST_OP_LD_B_VX:
+		 begin
+		    if (ctr_op == 2)
+		      begin
+			 mem_d[3 : 0] <= dec_to_bcd_q[3 : 0];
+		      end
+		    else if (ctr_op == 1)
+		      begin
+			 mem_d[3 : 0] <= dec_to_bcd_q[7 : 4];
+		      end
+		    else if (ctr_op == 0)
+		      begin
+			 mem_d[3 : 0] <= dec_to_bcd_q[11 : 8];
+		      end
+		    
+		    if (ctr_op < 3)
+		      begin
+			 waddr <= waddr + 1;
+		      end
+		    
+		 end
+	       
+	     endcase // case (state_op)
+	  end // else: !if(state_pipe[1] == ST_RD_U)
+	
      end // always @ (posedge clk)
+
+   always @ (posedge clk)
+     begin
+	if (state_op == ST_OP_LD_B_VX)
+	  begin
+	     if (ctr_op < 4)
+	       begin
+		  we <= 1;
+	       end
+	  end
+	else
+	  begin
+	     we <= 0;
+	  end
+     end
+
+   always @ (posedge clk)
+     begin
+	case(state_op)
+	  
+	  ST_OP_IDLE:
+	    begin
+	       if ( (state_pipe[1] == ST_RD_U) & (opcode_pipe[1] == OP_LD_VX))
+		 begin
+		    state_op <= ST_OP_LD_B_VX;
+		 end
+	    end
+
+	  ST_OP_LD_B_VX:
+	    begin
+	       if (ctr_op == 1)
+		 begin
+		    state_op <= ST_OP_IDLE;
+		 end
+	    end
+	  
+	endcase // case (state_op)
+     end
    
    always @ (posedge clk)
      begin
@@ -442,7 +516,7 @@ module interpreter(
 	       .clk(clk),
 	       .we(we),
 	       .waddr(waddr),
-	       .d(d),
+	       .d(mem_d),
 	       .re(1'b1),
 	       .raddr(raddr),
 	       .q(mem_q)
