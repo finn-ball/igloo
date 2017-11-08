@@ -286,6 +286,7 @@ module interpreter(
 			   end
 		      end
 		 end
+	       
 	     endcase // case (opcode_pipe[2])
 	  end // else: !if( ( state_pipe[0] == ST_RD_L ) )
 	
@@ -375,6 +376,9 @@ module interpreter(
 	       
 	       OP_DRW_VX_VY_NIB:
 		 v_raddr <= mem_q_pipe[0][3 : 0];
+
+	       OP_ADD_VX_BYTE:
+		 v_raddr <= mem_q_pipe[0][3 : 0];
 	       
 	       OP_LD_VX:
 		 v_raddr <= mem_q_pipe[0][3 : 0];
@@ -394,10 +398,13 @@ module interpreter(
 		    v_waddr <= mem_q_pipe[1][3 : 0];
 		    v_d <= mem_q_pipe[0];
 		 end
+
+	       OP_ADD_VX_BYTE:
+		    v_waddr <= mem_q_pipe[0][3 : 0];
 	       
 	       OP_DRW_VX_VY_NIB:
 		 v_raddr <= mem_q_pipe[0][7  : 4];
-	       	       
+	       
 	       OP_LD_I_ADDR:
 		 I[11 : 0] <= { {mem_q_pipe[1][3 : 0]}, mem_q_pipe[0][7 : 0] };
 
@@ -429,6 +436,11 @@ module interpreter(
 	     
 	  end // if (state_pipe[1] == ST_RD_U)
 
+	else if ( (state_pipe[2] == ST_RD_U) & (opcode_pipe[2] == OP_ADD_VX_BYTE) )
+	  begin
+	     v_d <= v_q_pipe[0] + mem_q_pipe[1];
+	  end
+	
 	else
 	  begin
 	     
@@ -556,6 +568,11 @@ module interpreter(
 	     v_we <= 1;
 	  end
 
+	else if ( (state_pipe[2] == ST_RD_U) & (opcode_pipe[2] == OP_ADD_VX_BYTE ) )
+	  begin
+	     v_we <= 1;
+	  end
+	
 	else
 	  case(state_op)
 
