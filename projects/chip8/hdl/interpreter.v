@@ -92,7 +92,7 @@ module interpreter(
    reg 		 sp_we = 0;
    reg [SP_DATA_WIDTH - 1 : 0] sp_d = 0;
    wire [SP_DATA_WIDTH - 1 : 0] sp_q;
-   reg [SP_ADDR_WIDTH - 1 : 0] 	sp_addr = 0;
+   reg [SP_ADDR_WIDTH - 1 : 0] 	sp_waddr = 0, sp_raddr;
    
    reg [7 : 0] 	 dt = 0;
 
@@ -201,7 +201,11 @@ module interpreter(
      begin
 	if (state_pipe[0] == ST_RD_U)
 	  begin
-	     if (opcode_pipe[1] == OP_CALL_ADDR)
+	     if (opcode_pipe[1] == OP_SYS)
+	       begin
+		  ctr_op <= 1;
+	       end
+	     else if (opcode_pipe[1] == OP_CALL_ADDR)
 	       begin
 		  ctr_op <= 1;
 	       end
@@ -239,10 +243,9 @@ module interpreter(
 	  end
 	
 	else if (state_pipe[1] == ST_RD_U) // if ST_OP needed?
-	  
 	  begin
 	     case (opcode_pipe[1])
-
+	       
 	       OP_SYS:
 		 begin
 		    if (mem_q_pipe[0] == 8'hEE)
@@ -253,41 +256,29 @@ module interpreter(
 	       
 	       OP_JP_ADDR:
 		 begin
-		    if (state_pipe[0] == ST_OP)
-		      begin
-			 pc[11 : 8] <= mem_q_pipe[1][3 : 0];
-			 pc[7 : 0] <= mem_q_pipe[0];
-		      end		    
+		    pc[11 : 8] <= mem_q_pipe[1][3 : 0];
+		    pc[7 : 0] <= mem_q_pipe[0];
 		 end
 	       
-	       OP_CALL_ADDR: // incr sp
+	       OP_CALL_ADDR:
 		 begin
-		    if (state_pipe[0] == ST_OP)
-		      begin
-			 pc[11 : 8] <= mem_q_pipe[1][3 : 0];
-			 pc[7 : 0] <= mem_q_pipe[0];
-		      end		    
+		    pc[11 : 8] <= mem_q_pipe[1][3 : 0];
+		    pc[7 : 0] <= mem_q_pipe[0];
 		 end // case: OP_CALL_ADDR
 	       
 	       OP_SE_VX_BYTE:
 		 begin
-		    if (state_pipe[0] == ST_OP)
+		    if (v_q == mem_q_pipe[0][7 : 0])
 		      begin
-			 if (v_q == mem_q_pipe[0][7 : 0])
-			   begin
-			      pc <= pc + 2;
-			   end
-		      end		    		    
+			 pc <= pc + 2;
+		      end
 		 end
 	       
 	       OP_SNE_VX_BYTE:
 		 begin
-		    if (state_pipe[0] == ST_OP)
+		    if (v_q != mem_q_pipe[0][7 : 0])
 		      begin
-			 if (v_q != mem_q_pipe[0][7 : 0])
-			   begin
-			      pc <= pc + 2;
-			   end
+			 pc <= pc + 2;
 		      end
 		 end
 	       
@@ -302,10 +293,25 @@ module interpreter(
 		      end
 		 end
 	       
-	     endcase // case (opcode_pipe[2])
-	  end // else: !if( ( state_pipe[0] == ST_RD_L ) )
-	
-     end // if (state_pipe[1] == ST_RD_U)   
+	     endcase // case (opcode_pipe[1])
+	  end // if (state_pipe[1] == ST_RD_U)
+
+	else if (state_pipe[2] == ST_RD_U)
+	  begin
+	     case (opcode_pipe[2])
+	       
+	       OP_SYS:
+		 begin
+		    //pc <= sp_q;
+		    if (mem_q_pipe[0] == 8'hEE)
+		      begin
+			 //pc <= sp_q;
+		      end
+		 end
+	       
+	     endcase // case (opcode_pipe[1])
+	  end // if (state_pipe[0] == ST_RD_L)
+     end // always @ (posedge clk)
    
    assign _v_we = v_we;
 
@@ -431,9 +437,6 @@ module interpreter(
 		    else if (mem_q_pipe[0] == 8'h1E)
 		      begin
 			 I <= (I + v_q_pipe[0]);
-		      end
-		    else if (mem_q_pipe[0] == 8'h29)
-		      begin
 		      end
 		    else if (mem_q_pipe[0] == 8'h33)
 		      begin
@@ -679,21 +682,29 @@ module interpreter(
      end // always @ (posedge clk)
 
    always @ (posedge clk)
-     begin	
+     begin
+	if (state_pipe[1] == ST_RD_U)
+	  begin
+	     if (opcode_pipe[1] == OP_SYS)
+	       begin
+		  if (mem_q_pipe[0] == 8'hEE)
+		    begin
+		       sp_waddr <= sp_waddr - 1;		  
+		    end
+	       end
+	  end
 	if (state_pipe[2] == ST_RD_U)
 	  begin
 	     if (opcode_pipe[2] == OP_CALL_ADDR)
 	       begin
-		  sp_addr <= sp_addr + 1;		  
-	       end
-	     else if (opcode_pipe[2] == OP_SYS)
-	       begin
-		  if (mem_q_pipe[1] == 8'hEE)
-		    begin
-		       sp_addr <= sp_addr - 1;		  
-		    end
+		  sp_waddr <= sp_waddr + 1;		  
 	       end
 	  end
+     end // always @ (posedge clk)
+
+   always @ (posedge clk)
+     begin
+	sp_raddr <= sp_waddr - 1;
      end
    
    ram#(
@@ -702,10 +713,10 @@ module interpreter(
 	) stack_addr (
 		      .clk(clk),
 		      .we(sp_we),
-		      .waddr(sp_addr),
+		      .waddr(sp_waddr),
 		      .d(sp_d),
 		      .re(1'b1),
-		      .raddr(sp_addr),
+		      .raddr(sp_raddr),
 		      .q(sp_q)
 		      );
    
