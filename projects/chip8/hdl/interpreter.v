@@ -201,19 +201,31 @@ module interpreter(
      begin
 	if (state_pipe[0] == ST_RD_U)
 	  begin
-	     if (opcode_pipe[1] == OP_SYS)
-	       begin
-		  ctr_op <= 1;
-	       end
-	     else if (opcode_pipe[1] == OP_CALL_ADDR)
-	       begin
-		  ctr_op <= 1;
-	       end
-	     else if (opcode_pipe[1] == OP_LD_VX)
-	       begin
-		  ctr_op <= 1;
-	       end
+	     case(opcode_pipe[1])
+	       OP_SYS:
+		 ctr_op <= 1;
+	       
+	       OP_JP_ADDR:
+		 ctr_op <= 1;
+	       
+	       OP_CALL_ADDR:
+		 ctr_op <= 1;
+	       
+	       OP_LD_VX:
+		 ctr_op <= 1;
+	       
+	       OP_SE_VX_BYTE:
+		 ctr_op <= 1;
+	       
+	       OP_SNE_VX_BYTE:
+		 ctr_op <= 1;
+	       
+	       OP_SE_VX_VY:
+		 ctr_op <= 1;
+	       
+	     endcase // case (opcode_pipe[1])
 	  end // if (state_pipe[0] == ST_RD_U)
+	
 	else if (state_pipe[1] == ST_RD_U)
 	  begin
 	     if (opcode_pipe[1] == OP_LD_VX)
@@ -225,6 +237,10 @@ module interpreter(
 		  else if (mem_q_pipe[0] == 8'h65)
 		    begin
 		       ctr_op <= mem_q_pipe[2][3 : 0] + 2;
+		    end
+		  else
+		    begin
+		       ctr_op <= 0;
 		    end
 	       end 
 	  end
