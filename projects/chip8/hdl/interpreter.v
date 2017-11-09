@@ -60,11 +60,12 @@ module interpreter(
    localparam PIPE_LENGTH = 5;
    
    reg [DATA_WIDTH - 1 : 0] 	  mem_q_pipe [PIPE_LENGTH - 1 : 0];
-   reg [10 : 0] 		  state_pipe [PIPE_LENGTH - 1 : 0];
-   reg [10 : 0] 		  opcode_pipe [PIPE_LENGTH - 1 : 0];
+   reg [3 : 0] 			  state_pipe [PIPE_LENGTH - 1 : 0];
+   reg [3 : 0] 			  opcode_pipe [PIPE_LENGTH - 1 : 0];
    reg [V_DATA_WIDTH - 1 : 0] 	  v_q_pipe [PIPE_LENGTH - 1 : 0];
    reg [15 : 0] 		  I_pipe [PIPE_LENGTH - 1 : 0];
    reg [15 : 0] 		  dec_to_bcd_q_pipe [PIPE_LENGTH - 1 : 0];
+   reg [ADDR_WIDTH - 1 : 0] 	  pc_pipe [PIPE_LENGTH - 1 : 0];
    
    localparam V_ADDR_WIDTH = 4;
    localparam V_DATA_WIDTH = 8;
@@ -85,8 +86,14 @@ module interpreter(
    reg 		 draw_en = 0;
    wire 	 draw_col;
    wire 	 draw_out;
+
+   localparam SP_ADDR_WIDTH = 4;
+   localparam SP_DATA_WIDTH = ADDR_WIDTH;
+   reg 		 sp_we = 0;
+   reg [SP_DATA_WIDTH - 1 : 0] sp_d = 0;
+   wire [SP_DATA_WIDTH - 1 : 0] sp_q;
+   reg [SP_ADDR_WIDTH - 1 : 0] 	sp_addr = 0;
    
-   reg [15 : 0]  sp = 0;
    reg [7 : 0] 	 dt = 0;
 
    reg [3 : 0] 	 ctr_op = 0;
@@ -96,9 +103,7 @@ module interpreter(
 
    reg [ADDR_WIDTH - 1 : 0] dump_raddr = 0;
 
-   wire [7 : 0] 	    sprite_location_q;
-   
-   
+   wire [7 : 0] 	    sprite_location_q;   
    assign red = draw_out ? 4'b1111 : 0 ;
    assign blue = draw_out ? 4'b1111 : 0 ;
    assign green = draw_out ? 4'b1111 : 0;
@@ -121,7 +126,7 @@ module interpreter(
 	  end   
      end
    
-   always @(mem_q, state, opcode, v_q, I, dec_to_bcd_q)
+   always @(mem_q, state, opcode, v_q, I, dec_to_bcd_q, pc)
      begin
 	mem_q_pipe[0] <= mem_q;
 	state_pipe[0] <= state;
@@ -129,6 +134,7 @@ module interpreter(
 	v_q_pipe[0] <= v_q;
 	I_pipe[0] <= I;
 	dec_to_bcd_q_pipe[0] <= dec_to_bcd_q;
+	pc_pipe[0] <= pc;
      end
    
    genvar 				       i;
@@ -143,6 +149,7 @@ module interpreter(
 		v_q_pipe[i] <= v_q_pipe[i - 1];
 		I_pipe[i] <= I_pipe[i - 1];
 		dec_to_bcd_q_pipe[i] <= dec_to_bcd_q_pipe[i - 1];
+		pc_pipe[i] <= pc_pipe[i - 1];
 	     end
 	end      
    endgenerate
@@ -184,7 +191,7 @@ module interpreter(
 	    begin
 	       if (~draw_busy & (mem_q_pipe[1][7 : 4] != 4'hD) & (mem_q_pipe[2][7 : 4] != 4'hD ))
 		 begin
-		    state <= ST_RD_L;
+		    state <= ST_OP;
 		 end
 	    end
 	endcase // case (state)
@@ -231,11 +238,19 @@ module interpreter(
 	     pc <= pc + 1;
 	  end
 	
-	else if (state_pipe[1] == ST_RD_U)
+	else if (state_pipe[1] == ST_RD_U) // if ST_OP needed?
 	  
 	  begin
 	     case (opcode_pipe[1])
 
+	       OP_SYS:
+		 begin
+		    if (mem_q_pipe[0] == 8'hEE)
+		      begin
+			 pc <= sp_q;
+		      end
+		 end
+	       
 	       OP_JP_ADDR:
 		 begin
 		    if (state_pipe[0] == ST_OP)
@@ -362,8 +377,6 @@ module interpreter(
 	  begin
 	     
 	     case(opcode_pipe[0])
-	       OP_CALL_ADDR:
-		 sp <= sp + 1;
 	       
 	       OP_SE_VX_BYTE:
 		 v_raddr <= mem_q_pipe[0][3 : 0];
@@ -389,7 +402,7 @@ module interpreter(
 	else if (state_pipe[1] == ST_RD_U)
 	  begin
 	     case(opcode_pipe[1])
-	       
+
 	       OP_SE_VX_VY:
 		 v_raddr <= mem_q_pipe[0][3 : 0];
 	       
@@ -647,7 +660,55 @@ module interpreter(
 	      .re(1'b1),
 	      .raddr(v_raddr),
 	      .q(_v_q)
-	      );
+	      );   
+
+   always @ (posedge clk)
+     begin
+	sp_d <= pc;
+	if (state_pipe[1] == ST_RD_U)
+	  begin
+	     if (opcode_pipe[1] == OP_CALL_ADDR)
+	       begin
+		  sp_we <= 1;		  
+	       end
+	  end
+	else
+	  begin
+	     sp_we <= 0;
+	  end
+     end // always @ (posedge clk)
+
+   always @ (posedge clk)
+     begin	
+	if (state_pipe[2] == ST_RD_U)
+	  begin
+	     if (opcode_pipe[2] == OP_CALL_ADDR)
+	       begin
+		  sp_addr <= sp_addr + 1;		  
+	       end
+	     else if (opcode_pipe[2] == OP_SYS)
+	       begin
+		  if (mem_q_pipe[1] == 8'hEE)
+		    begin
+		       sp_addr <= sp_addr - 1;		  
+		    end
+	       end
+	  end
+     end
+   
+   ram#(
+	.ADDR_WIDTH(SP_ADDR_WIDTH),
+	.DATA_WIDTH(SP_DATA_WIDTH)
+	) stack_addr (
+		      .clk(clk),
+		      .we(sp_we),
+		      .waddr(sp_addr),
+		      .d(sp_d),
+		      .re(1'b1),
+		      .raddr(sp_addr),
+		      .q(sp_q)
+		      );
+   
 
    always @ (_v_q)
      begin
