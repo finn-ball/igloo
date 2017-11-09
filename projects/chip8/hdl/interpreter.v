@@ -191,11 +191,17 @@ module interpreter(
 	    begin
 	       if (~draw_busy & (mem_q_pipe[1][7 : 4] != 4'hD) & (mem_q_pipe[2][7 : 4] != 4'hD ))
 		 begin
-		    state <= ST_OP;
+		    //if (draw_ctr < 2)
+		      //begin
+			// draw_ctr <= draw_ctr + 1;
+			 state <= ST_OP;
+		    //end
 		 end
 	    end
 	endcase // case (state)
      end // always @ (posedge clk)
+
+//   reg [3 : 0] draw_ctr = 0;
    
    always @ (posedge clk)
      begin
@@ -242,7 +248,42 @@ module interpreter(
 		    begin
 		       ctr_op <= 0;
 		    end
-	       end 
+	       end // if (opcode_pipe[1] == OP_LD_VX)
+	     else if (opcode[1] == OP_VX_VY)
+	       begin
+		  if (mem_q_pipe[0][3 : 0] == 4'h1)
+		    begin
+		       ctr_op <= 1;
+		    end
+		  else if (mem_q_pipe[0][3 : 0] == 4'h2)
+		    begin
+		       ctr_op <= 1;
+		    end
+		  else if (mem_q_pipe[0][3 : 0] == 4'h3)
+		    begin
+		       ctr_op <= 1;
+		    end
+		  else if (mem_q_pipe[0][3 : 0] == 4'h4)
+		    begin
+		       ctr_op <= 1;
+		    end
+		  else if (mem_q_pipe[0][3 : 0] == 4'h5)
+		    begin
+		       ctr_op <= 1;
+		    end
+		  else if (mem_q_pipe[0][3 : 0] == 4'h6)
+		    begin
+		       ctr_op <= 1;
+		    end
+		  else if (mem_q_pipe[0][3 : 0] == 4'h7)
+		    begin
+		       ctr_op <= 1;
+		    end
+		  else if (mem_q_pipe[0][3 : 0] == 4'hE)
+		    begin
+		       ctr_op <= 1;
+		    end
+	       end
 	  end
 	else if (ctr_op > 0)
 	  begin
@@ -258,7 +299,7 @@ module interpreter(
 	     pc <= pc + 1;
 	  end
 	
-	else if (state_pipe[1] == ST_RD_U) // if ST_OP needed?
+	else if (state_pipe[1] == ST_RD_U)
 	  begin
 	     case (opcode_pipe[1])
 	       
@@ -398,7 +439,7 @@ module interpreter(
 	else if (state_pipe[1] == ST_RD_L)
 	  begin
 	     
-	     case(opcode_pipe[0])
+	     case(opcode_pipe[0]) // remove?
 	       
 	       OP_SE_VX_BYTE:
 		 v_raddr <= mem_q_pipe[0][3 : 0];
@@ -406,7 +447,10 @@ module interpreter(
 	       OP_SNE_VX_BYTE:
 		 v_raddr <= mem_q_pipe[0][3 : 0];
 	       
-	       OP_SE_VX_VY:
+	       //OP_SE_VX_VY:
+	       //v_raddr <= mem_q_pipe[0][3 : 0];
+
+	       OP_RND_VX_BYTE:
 		 v_raddr <= mem_q_pipe[0][3 : 0];
 	       
 	       OP_DRW_VX_VY_NIB:
@@ -433,9 +477,22 @@ module interpreter(
 		    v_waddr <= mem_q_pipe[1][3 : 0];
 		    v_d <= mem_q_pipe[0];
 		 end
-
+	       
 	       OP_ADD_VX_BYTE:
-		    v_waddr <= mem_q_pipe[0][3 : 0];
+		 v_waddr <= mem_q_pipe[0][3 : 0];
+	       
+	       OP_SE_VX_VY:
+		 begin
+		    v_raddr <= mem_q_pipe[0][7 : 4];
+		    v_waddr <= mem_q_pipe[1][3 : 0];
+		 end
+	       
+
+	       OP_RND_VX_BYTE:
+		 begin
+		    v_waddr <= mem_q_pipe[1][3 : 0];
+		    v_d <= ctr_rnd & mem_q_pipe[0];
+		 end
 	       
 	       OP_DRW_VX_VY_NIB:
 		 v_raddr <= mem_q_pipe[0][7  : 4];
@@ -584,11 +641,14 @@ module interpreter(
 	     case(opcode_pipe[1])
 	       
 	       OP_LD_VX_BYTE:
-		  v_we <= 1;
+		 v_we <= 1;
+
+	       OP_RND_VX_BYTE:
+		 v_we <= 1;
 	       
 	       OP_LD_VX:
-		  v_we <= mem_q_pipe[0] == 8'h07;
-
+		 v_we <= mem_q_pipe[0] == 8'h07;
+	       
 	       default:
 		 v_we <= 0;
 	       
@@ -782,7 +842,7 @@ module interpreter(
    
    clks#(
 	 //.T(418750 / 2) // 60Hz
-	 .T(40 / 2) // quicker for quick sim testing
+	 .T(10 / 2) // quicker for quick sim testing
 	 )
      dt_clks(
 	     .clk_i(clk),
@@ -796,13 +856,20 @@ module interpreter(
 	
 	if ( (mem_q_pipe[1] == 8'h15) & (opcode_pipe[2] == OP_LD_VX) & (state_pipe[2] == ST_RD_U ) )
 	  begin
-	     dt <= v_q_pipe[0];
+	     //dt <= v_q_pipe[0];
+	     dt <= 5; // sim only
 	  end
 	else if  ( dt > 0 )
 	  begin
 	     dt <= dt - (dt_pulse ^ dt_pulse_d);
 	  end
      end
-
+   
+   reg [7 : 0] ctr_rnd = 0;
+   
+   always @ (posedge clk)
+     begin
+	ctr_rnd <= ctr_rnd + 1;
+     end
    
 endmodule // interpreter
