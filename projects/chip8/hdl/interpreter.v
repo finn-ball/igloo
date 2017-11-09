@@ -773,9 +773,16 @@ module interpreter(
 	     );
 
    wire clk_dt;
+   reg 	dt_pulse = 0, dt_pulse_d = 0;
+
+   always @ (posedge clk_dt)
+     begin
+	dt_pulse <= ~dt_pulse;
+     end
    
    clks#(
-	 .T(418750) // 60Hz
+	 //.T(418750 / 2) // 60Hz
+	 .T(40 / 2) // quicker for quick sim testing
 	 )
      dt_clks(
 	     .clk_i(clk),
@@ -784,13 +791,16 @@ module interpreter(
 
    always @ (posedge clk)
      begin
+	
+	dt_pulse_d <= dt_pulse;
+	
 	if ( (mem_q_pipe[1] == 8'h15) & (opcode_pipe[2] == OP_LD_VX) & (state_pipe[2] == ST_RD_U ) )
 	  begin
 	     dt <= v_q_pipe[0];
 	  end
 	else if  ( dt > 0 )
 	  begin
-	     dt <= dt - clk_dt;
+	     dt <= dt - (dt_pulse ^ dt_pulse_d);
 	  end
      end
 
