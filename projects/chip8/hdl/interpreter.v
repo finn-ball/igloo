@@ -264,7 +264,7 @@ module interpreter(
 		 begin
 		    pc[11 : 8] <= mem_q_pipe[1][3 : 0];
 		    pc[7 : 0] <= mem_q_pipe[0];
-		 end // case: OP_CALL_ADDR
+		 end
 	       
 	       OP_SE_VX_BYTE:
 		 begin
@@ -481,7 +481,7 @@ module interpreter(
 		      begin
 			 waddr <= waddr + 1;
 		      end
-		 end // case: ST_OP_LD_B_VX
+		 end
 
 	       ST_OP_LD_VX_I:
 		 begin
@@ -608,18 +608,6 @@ module interpreter(
    
    always @ (posedge clk)
      begin
-	if ( (mem_q_pipe[0] == 8'h15) & (opcode_pipe[1] == OP_LD_VX) & (state_pipe[1] == ST_RD_U ) )
-	  begin
-	     dt <= v_q_pipe[0];
-	  end
-	else if  (dt > 0)
-	  begin
-	     dt <= dt - 1; // make 60Hz
-	  end
-     end
-
-   always @ (posedge clk)
-     begin
 	if ( (state_pipe[2] == ST_RD_U) & (opcode_pipe[2] == OP_DRW_VX_VY_NIB))
 	  begin
 	     draw_en <= 1;
@@ -693,7 +681,7 @@ module interpreter(
 		    end
 	       end
 	  end
-	if (state_pipe[2] == ST_RD_U)
+	else if (state_pipe[2] == ST_RD_U)
 	  begin
 	     if (opcode_pipe[2] == OP_CALL_ADDR)
 	       begin
@@ -767,5 +755,28 @@ module interpreter(
 	     .hs_o(hs),
 	     .vs_o(vs)
 	     );
+
+   wire clk_dt;
+   
+   clks#(
+	 .T(418750) // 60Hz
+	 )
+     dt_clks(
+	     .clk_i(clk),
+	     .clk_o(clk_dt)
+	     );
+
+   always @ (posedge clk)
+     begin
+	if ( (mem_q_pipe[1] == 8'h15) & (opcode_pipe[2] == OP_LD_VX) & (state_pipe[2] == ST_RD_U ) )
+	  begin
+	     dt <= v_q_pipe[0];
+	  end
+	else if  ( dt > 0 )
+	  begin
+	     dt <= dt - clk_dt;
+	  end
+     end
+
    
 endmodule // interpreter
