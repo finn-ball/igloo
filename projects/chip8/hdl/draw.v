@@ -25,15 +25,23 @@ module draw(
 
    localparam PIPE_LENGTH = 4;
    
+   reg [1 : 0] 				state_pipe [PIPE_LENGTH - 1 : 0];
+   reg [VRAM_ADDR_WIDTH - 1 : 0] 	waddr_pipe [PIPE_LENGTH - 1 : 0];
+   reg [DATA_WIDTH - 1 : 0] 		mem_d_pipe [PIPE_LENGTH - 1 : 0];
+   reg [VRAM_DATA_WIDTH - 1 : 0] 	q_pipe [PIPE_LENGTH - 1 : 0];
+   reg [VRAM_DATA_WIDTH - 1 : 0] 	d_pipe [PIPE_LENGTH - 1 : 0];
+   reg [PIPE_LENGTH - 1 : 0] 		we_pipe;
+   reg [2 : 0] 				ctr_pix_pipe [PIPE_LENGTH - 1 : 0];
+   
+   reg [1 : 0] 				state = ST_IDLE;
+   
    reg [ADDR_WIDTH - 1 : 0] 		_mem_raddr = 0;
    
-   reg [3 : 0] 				state = ST_IDLE;
-   
-   reg 					we;
-   reg [VRAM_ADDR_WIDTH - 1 : 0] 	waddr = 0;//, raddr = 0;
-   
+   reg 					we = 0;
+   reg [VRAM_ADDR_WIDTH - 1 : 0] 	waddr = 0;
    wire [VRAM_DATA_WIDTH - 1 : 0] 	q;
    reg [VRAM_DATA_WIDTH - 1 : 0] 	d = 0;
+   
    wire [VRAM_ADDR_WIDTH - 1 : 0] 	raddr, draw_vram_raddr, draw_screen_raddr;
    
    reg [3 : 0] 				ctr_nib = 0;
@@ -41,7 +49,7 @@ module draw(
    reg [2 : 0] 				ctr_pix = 0;
 
    reg [4 : 0] 				y = 0;
-   reg [5 : 0] 				x, x0 = 0;
+   reg [5 : 0] 				x = 0, x0 = 0;
    wire [4 : 0] 			y_screen;
    wire [5 : 0] 			x_screen;
 
@@ -50,7 +58,6 @@ module draw(
    
    reg 					_col;
    
-   reg 					q_d = 0;
    reg 					draw_vram;
    reg 					_draw_out;
    
@@ -69,8 +76,9 @@ module draw(
    assign draw_vram_raddr = { {y} , {x} };
    assign draw_screen_raddr = { {y_screen} , {x_screen} };
    assign mem_raddr = _mem_raddr;
-
-   assign busy = vs | en | ~(state == ST_IDLE);
+   assign busy = vs | en
+		    | ~(state_pipe[0] == ST_IDLE)
+		    | ~(state_pipe[1] == ST_IDLE);
    
    always @ (posedge clk)
      begin
@@ -84,7 +92,7 @@ module draw(
 	  end
      end // always @ (posedge clk)
    
-   always @*
+   always @ (vs_valid, hs_valid, hs, vs)
      begin
 	pipe_vs_valid[0] <= vs_valid;
 	pipe_hs_valid[0] <= hs_valid;
@@ -96,11 +104,40 @@ module draw(
      begin
 	pipe_vs_valid[PIPE_LENGTH - 1 : 1] <= pipe_vs_valid[PIPE_LENGTH - 2 : 0];
 	pipe_hs_valid[PIPE_LENGTH - 1 : 1] <= pipe_hs_valid[PIPE_LENGTH - 2 : 0];
-
 	pipe_vs[PIPE_LENGTH - 1 : 1] <= pipe_vs[PIPE_LENGTH - 2 : 0];
 	pipe_hs[PIPE_LENGTH - 1 : 1] <= pipe_hs[PIPE_LENGTH - 2 : 0];
+
+	we_pipe[PIPE_LENGTH - 1 : 1] <= we_pipe[PIPE_LENGTH - 2 : 0];
      end
-      
+
+   always @ (mem_d, state, we, waddr, q, d, ctr_pix)
+     begin
+	mem_d_pipe[0] <= mem_d;
+	state_pipe[0] <= state;
+	we_pipe[0] <= we;
+	waddr_pipe[0] <= waddr;
+	q_pipe[0] <= q;
+	d_pipe[0] <= d;
+	ctr_pix_pipe[0] <= ctr_pix;
+     end
+
+   genvar i;
+   
+   generate
+      for (i = 1; i < PIPE_LENGTH; i = i + 1)
+	begin
+	   always @ (posedge clk)
+	     begin
+		mem_d_pipe[i] <= mem_d_pipe[i - 1];
+		state_pipe[i] <= state_pipe[i - 1];
+		waddr_pipe[i] <= waddr_pipe[i - 1];
+		q_pipe[i] <= q_pipe[i - 1];
+		d_pipe[i] <= d_pipe[i - 1];
+		ctr_pix_pipe[i] <= ctr_pix_pipe[i - 1];
+	     end
+	end
+endgenerate
+	   
    always @ (posedge clk)
      begin
 	case (state)
@@ -118,7 +155,7 @@ module draw(
 	  
 	  ST_DRAW_VRAM:
 	    begin
-	       if (ctr_nib == (nibbles - 1) & (ctr_pix == 7) )
+	       if (ctr_nib == (nibbles - 1) & (ctr_pix == 0) )
 		 begin
 		    state <= ST_IDLE;
 		 end
@@ -150,8 +187,16 @@ module draw(
 	  end
 	else if (state == ST_DRAW_VRAM)
 	  begin
-	     y <= y + (ctr_pix == 7);
-	     x <= x0 + ctr_pix;
+	     
+	     if (ctr_pix == 0)
+	       begin
+		  y <= y + 1;
+		  x <= x0;
+	       end
+	     else
+	       begin
+		  x <= x + 1;
+	       end
 	  end
      end // always @ (posedge clk)
 
@@ -159,37 +204,43 @@ module draw(
      begin
 	if (state == ST_IDLE)
 	  begin
-	     ctr_pix <= 0;
+	     ctr_pix <= 7;
 	  end
 	else if (state == ST_DRAW_VRAM)
 	  begin
-	     ctr_pix <= ctr_pix + 1;
+	     ctr_pix <= ctr_pix - 1;
 	  end
      end // always @ (posedge clk)
    
    always @ (posedge clk)
      begin
-	waddr <= raddr; 
+	waddr <= draw_vram_raddr; 
+     end
+
+   reg[2 : 0] state_d = 0;  
+   
+   always @ (posedge clk)
+     begin
+	state_d <= state;
      end
    
    always @ (posedge clk)
      begin
-	q_d <= q[0];
-     end
-   
-   always @ (posedge clk)
-     begin
-	if (state == ST_DRAW_VRAM)
+	if (state_pipe[1] == ST_DRAW_VRAM)
 	  begin
-	     d[0] <= mem_d[ctr_pix] ^ q[0];
-	     if (q_d == 1 & d[0] == 0)
+	     d[0] <= mem_d_pipe[1][ctr_pix_pipe[1]] ^ q[0];
+	  end
+	else if (state_pipe[2] == ST_DRAW_VRAM)
+	  begin
+	     if (q_pipe[1][0] == 1 & d[0] == 0)
 	       begin
-		  _col <= 1; // screen pix set to unset
+		  _col <= 1; // screen pix set to unset = collision
 	       end
 	  end
-	else if (state == ST_IDLE)
+	else if (state_pipe[2] == ST_IDLE)
 	  begin
 	     _col <= 0;
+	     d <= 0;
 	  end
      end
 
@@ -199,7 +250,7 @@ module draw(
 	  begin
 	     _mem_raddr <= I;
 	  end
-	else if (state == ST_DRAW_VRAM & ctr_pix == 6)
+	else if (state == ST_DRAW_VRAM & ctr_pix == 1)
 	  begin
 	     _mem_raddr <= _mem_raddr + 1;
 	  end
@@ -211,7 +262,7 @@ module draw(
 	  begin
 	     draw_vram <= 1;
 	  end
-	else if (ctr_nib == (nibbles - 1) & (ctr_pix == 7) )
+	else if (ctr_nib == (nibbles - 1) & (ctr_pix == 0) )
 	  begin
 	     draw_vram <= 0;
 	  end
@@ -223,7 +274,7 @@ module draw(
 	  begin
 	     ctr_nib <= 0;
 	  end
-	else if (state == ST_DRAW_VRAM & ctr_pix == 7)
+	else if (state == ST_DRAW_VRAM & ctr_pix == 0)
 	  begin
 	     ctr_nib <= ctr_nib + 1;
 	  end
@@ -239,8 +290,8 @@ module draw(
 		     .r_clk(clk),
 		     .w_clk_en(1'b1),
 		     .r_clk_en(1'b1),
-		     .we(we),
-		     .waddr(waddr),
+		     .we(we_pipe[1]),
+		     .waddr(waddr_pipe[1]), 
 		     .d(d),
 		     .re(1'b1),
 		     .raddr(raddr),
