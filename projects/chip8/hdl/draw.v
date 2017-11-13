@@ -1,6 +1,7 @@
 module draw(
 	    input 			clk,
 	    input 			en,
+	    input 			cls_en,
 	    input [15 : 0] 		I,
 	    input [10 : 0] 		start_pix,
 	    input [3 : 0] 		start_nibbles, 
@@ -16,6 +17,7 @@ module draw(
    localparam ST_IDLE        = 0;
    localparam ST_DRAW_SCREEN = 1;
    localparam ST_DRAW_VRAM   = 2;
+   localparam ST_CLS         = 3;
    
    localparam DATA_WIDTH = 8;
    localparam ADDR_WIDTH = 12;
@@ -58,13 +60,15 @@ module draw(
    
    reg 					_col;
    
-   reg 					draw_vram;
+   reg 					draw_vram = 0, draw_cls = 0;
    reg 					_draw_out;
    
    reg [PIPE_LENGTH - 1 : 0] 		pipe_vs_valid = 0;
    reg [PIPE_LENGTH - 1 : 0] 		pipe_hs_valid = 0;
    reg [PIPE_LENGTH - 1 : 0] 		pipe_vs = 0;
    reg [PIPE_LENGTH - 1 : 0] 		pipe_hs = 0;
+
+   reg [VRAM_ADDR_WIDTH - 1 : 0] 	ctr_vram = 0;
    
    assign draw_out = _draw_out;
    assign vs_o = pipe_vs[3];
@@ -76,8 +80,7 @@ module draw(
    assign draw_vram_raddr = { {y} , {x} };
    assign draw_screen_raddr = { {y_screen} , {x_screen} };
    assign mem_raddr = _mem_raddr;
-   assign busy = vs | en
-		    | ~(state_pipe[0] == ST_IDLE)
+   assign busy = vs | ~(state_pipe[0] == ST_IDLE)
 		    | ~(state_pipe[1] == ST_IDLE);
    
    always @ (posedge clk)
@@ -151,6 +154,10 @@ endgenerate
 		 begin
 		    state <= ST_DRAW_VRAM;
 		 end
+	       else if (cls_en)
+		 begin
+		    state <= ST_CLS;
+		 end
 	    end
 	  
 	  ST_DRAW_VRAM:
@@ -172,7 +179,14 @@ endgenerate
 		    state <= draw_vram ? ST_DRAW_VRAM : ST_IDLE;
 		 end
 	    end
-	  
+
+	  ST_CLS:
+	    begin
+	       if (~draw_cls)
+		 begin
+		    state <= ST_IDLE;
+		 end
+	    end
 	endcase
      end // always @ (posedge clk)
    
@@ -187,7 +201,6 @@ endgenerate
 	  end
 	else if (state == ST_DRAW_VRAM)
 	  begin
-	     
 	     if (ctr_pix == 0)
 	       begin
 		  y <= y + 1;
@@ -214,14 +227,14 @@ endgenerate
    
    always @ (posedge clk)
      begin
-	waddr <= draw_vram_raddr; 
-     end
-
-   reg[2 : 0] state_d = 0;  
-   
-   always @ (posedge clk)
-     begin
-	state_d <= state;
+	if (draw_vram)
+	  begin
+	     waddr <= draw_vram_raddr;
+	  end
+	else
+	  begin
+	     waddr <= ctr_vram;
+	  end
      end
    
    always @ (posedge clk)
@@ -237,7 +250,7 @@ endgenerate
 		  _col <= 1; // screen pix set to unset = collision
 	       end
 	  end
-	else if (state_pipe[2] == ST_IDLE)
+	else if ( (state_pipe[2] == ST_IDLE) | (state_pipe[0] == ST_CLS) )
 	  begin
 	     _col <= 0;
 	     d <= 0;
@@ -266,6 +279,23 @@ endgenerate
 	  begin
 	     draw_vram <= 0;
 	  end
+     end // always @ (posedge clk)
+
+   always @ (posedge clk)
+     begin
+	ctr_vram <= ctr_vram + (state == ST_CLS);
+     end
+   
+   always @ (posedge clk)
+     begin
+	if (cls_en)
+	  begin
+	     draw_cls <= 1;
+	  end
+	else if (ctr_vram == ((1 << VRAM_ADDR_WIDTH) - 2))
+	  begin
+	     draw_cls <= 0;
+	  end
      end
 
    always @ (posedge clk)
@@ -282,7 +312,7 @@ endgenerate
    
    always @ (posedge clk)
      begin
-	we <= state == ST_DRAW_VRAM;
+	we <= (state == ST_DRAW_VRAM) | (state == ST_CLS);
      end
    
    dram_2048x2 vram (

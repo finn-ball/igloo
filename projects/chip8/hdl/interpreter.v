@@ -92,7 +92,7 @@ module interpreter(
    wire 	 draw_busy;
    wire [10 : 0] vram_start_pix;
    wire [3 : 0]  vram_nibbles;
-   reg 		 draw_en = 0;
+   reg 		 draw_en = 0, cls_en = 0;
    wire 	 draw_col;
    wire 	 draw_out;
 
@@ -927,13 +927,18 @@ module interpreter(
 	  begin
 	     draw_en <= 1;
 	  end
-	else if ( (state_pipe[1] == ST_RD_U) & (opcode_pipe[2] == OP_SYS) )
-	  begin
-	     draw_en <= mem_q_pipe[0] = 8'hE0;
-	  end	  
 	else
 	  begin
 	     draw_en <= 0;
+	  end
+
+	if ( (state_pipe[1] == ST_RD_U) & (opcode_pipe[1] == OP_SYS))
+	  begin
+	     cls_en <= 1;
+	  end
+	else
+	  begin
+	     cls_en <= 0;
 	  end
      end // always @ (posedge clk)
    
@@ -1060,15 +1065,16 @@ module interpreter(
 			   .raddr(v_q_pipe[1][3 : 0]),
 			   .q(sprite_location_q)
 			   );
-   
+
    draw draw(
 	     .clk(clk),
 	     .en(draw_en),
+	     .cls_en(cls_en),
 	     .I(I),
 	     .start_pix(vram_start_pix),
 	     .start_nibbles(vram_nibbles),
 	     .mem_raddr(draw_raddr),
-	     .mem_d(mem_q),
+	     .mem_d(mem_q_pipe[0]),
 	     .busy(draw_busy),
 	     .col(draw_col),
 	     .draw_out(draw_out),
