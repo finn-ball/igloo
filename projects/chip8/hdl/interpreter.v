@@ -26,9 +26,10 @@ module interpreter(
    localparam ST_OP_AND_VX_VY  = 6;
    localparam ST_OP_XOR_VX_VY  = 7;
    localparam ST_OP_ADD_VX_VY  = 8;
-   localparam ST_OP_SHR_VX_VY  = 9;
-   localparam ST_OP_SUBN_VX_VY    = 10;
-   localparam ST_OP_SHL_VX_VY     = 11;
+   localparam ST_OP_SUB_VX_VY  = 9;
+   localparam ST_OP_SHR_VX_VY  = 10;
+   localparam ST_OP_SUBN_VX_VY = 11;
+   localparam ST_OP_SHL_VX_VY  = 12;
    
    localparam OP_SYS            = 0;
    localparam OP_JP_ADDR        = 1;
@@ -112,6 +113,9 @@ module interpreter(
    reg [ADDR_WIDTH - 1 : 0] dump_raddr = 0;
 
    wire [7 : 0] 	    sprite_location_q;   
+
+   reg [8 : 0] 		    carry = 0; 		    
+   
    assign red = draw_out ? 4'b1111 : 0 ;
    assign blue = draw_out ? 4'b1111 : 0 ;
    assign green = draw_out ? 4'b1111 : 0;
@@ -199,17 +203,11 @@ module interpreter(
 	    begin
 	       if (~draw_busy & (mem_q_pipe[1][7 : 4] != 4'hD) & (mem_q_pipe[2][7 : 4] != 4'hD ))
 		 begin
-		    //if (draw_ctr < 2)
-		      //begin
-			// draw_ctr <= draw_ctr + 1;
 			 state <= ST_OP;
-		    //end
 		 end
 	    end
 	endcase // case (state)
      end // always @ (posedge clk)
-
-//   reg [3 : 0] draw_ctr = 0;
    
    always @ (posedge clk)
      begin
@@ -260,40 +258,38 @@ module interpreter(
 		       ctr_op <= 0;
 		    end
 	       end // if (opcode_pipe[1] == OP_LD_VX)
-	     else if (opcode[1] == OP_VX_VY)
+	     else if (opcode_pipe[1] == OP_VX_VY)
 	       begin
-		  if (mem_q_pipe[0][3 : 0] == 4'h1)
-		    begin
+		  case(mem_q_pipe[0][3: 0])
+		    
+		    4'h0:
+		      ctr_op <= 1;
+		    
+		    4'h1:
 		       ctr_op <= 1;
-		    end
-		  else if (mem_q_pipe[0][3 : 0] == 4'h2)
-		    begin
-		       ctr_op <= 1;
-		    end
-		  else if (mem_q_pipe[0][3 : 0] == 4'h3)
-		    begin
-		       ctr_op <= 1;
-		    end
-		  else if (mem_q_pipe[0][3 : 0] == 4'h4)
-		    begin
-		       ctr_op <= 1;
-		    end
-		  else if (mem_q_pipe[0][3 : 0] == 4'h5)
-		    begin
-		       ctr_op <= 1;
-		    end
-		  else if (mem_q_pipe[0][3 : 0] == 4'h6)
-		    begin
-		       ctr_op <= 1;
-		    end
-		  else if (mem_q_pipe[0][3 : 0] == 4'h7)
-		    begin
-		       ctr_op <= 1;
-		    end
-		  else if (mem_q_pipe[0][3 : 0] == 4'hE)
-		    begin
-		       ctr_op <= 1;
-		    end
+		    
+		    4'h2:
+		      ctr_op <= 1;
+		    
+		    4'h3:
+		      ctr_op <= 1;
+		    
+		    4'h4:
+		      ctr_op <= 2;
+		    
+		    4'h5:
+		      ctr_op <= 2;
+		    
+		    4'h6:
+		      ctr_op <= 2;
+		    
+		    4'h7:
+		      ctr_op <= 2;
+		    
+		    4'hE:
+		      ctr_op <= 2;
+		  endcase // case (mem_q_pipe[0][3: 0])
+		  
 	       end
 	  end
 	else if (ctr_op > 0)
@@ -363,22 +359,7 @@ module interpreter(
 	       
 	     endcase // case (opcode_pipe[1])
 	  end // if (state_pipe[1] == ST_RD_U)
-
-	else if (state_pipe[2] == ST_RD_U)
-	  begin
-	     case (opcode_pipe[2])
-	       
-	       OP_SYS:
-		 begin
-		    //pc <= sp_q;
-		    if (mem_q_pipe[0] == 8'hEE)
-		      begin
-			 //pc <= sp_q;
-		      end
-		 end
-	       
-	     endcase // case (opcode_pipe[1])
-	  end // if (state_pipe[0] == ST_RD_L)
+	
      end // always @ (posedge clk)
    
    assign _v_we = v_we;
@@ -551,41 +532,113 @@ module interpreter(
 	       ST_OP_LD_VX_VY:
 		 begin
 		    v_d <= v_q_pipe[0];
-		    v_waddr <= mem_q_pipe[2][3 : 0];
+		    v_waddr <= mem_q_pipe[3][3 : 0];
 		 end
 
 	       ST_OP_OR_VX_VY:
 		 begin
 		    v_d <= v_q_pipe[0] | v_q_pipe[1];
-		    v_waddr <= mem_q_pipe[2][3 : 0];
+		    v_waddr <= mem_q_pipe[3][3 : 0];
 		 end
 
 	       ST_OP_AND_VX_VY:
 		 begin
 		    v_d <= v_q_pipe[0] & v_q_pipe[1];
-		    v_waddr <= mem_q_pipe[2][3 : 0];
+		    v_waddr <= mem_q_pipe[3][3 : 0];
 		 end
 
 	       ST_OP_XOR_VX_VY:
 		 begin
 		    v_d <= v_q_pipe[0] ^ v_q_pipe[1];
-		    v_waddr <= mem_q_pipe[2][3 : 0];
+		    v_waddr <= mem_q_pipe[3][3 : 0];
 		 end
 
 	       ST_OP_ADD_VX_VY:
 		 begin
+		    case(ctr_op)
+		      1:
+			begin
+			   v_d <= v_q_pipe[0] + v_q_pipe[1];
+			   carry <= v_q_pipe[0] + v_q_pipe[1];
+			   v_waddr <= mem_q_pipe[3][3 : 0];
+			end
+
+		      0:
+			begin
+			   v_waddr <= 4'hF;
+			   v_d <= carry[8];	
+			end
+		      endcase
+		 end // case: ST_OP_ADD_VX_VY
+	       
+	       ST_OP_SUB_VX_VY:
+		 begin
+		    case(ctr_op)
+		      1:
+			begin
+			   v_d <= v_q_pipe[1] - v_q_pipe[0];
+			   carry <= v_q_pipe[1] >  v_q_pipe[0];
+			   v_waddr <= mem_q_pipe[3][3 : 0];
+			end
+		      
+		      0:
+			begin
+			   v_waddr <= 4'hF;
+			   v_d <= carry[8];	
+			end
+		    endcase
 		 end
 	       
 	       ST_OP_SHR_VX_VY:
 		 begin
+		    case(ctr_op)
+		      1:
+			begin
+			   v_d <= v_q_pipe[1] >> 1;
+			   v_waddr <= mem_q_pipe[3][3 : 0];
+			end
+		      
+		      0:
+			begin
+			   v_waddr <= 4'hF;
+			   v_d <= v_q_pipe[2][0];	
+			end
+		    endcase
 		 end
-
+	       
 	       ST_OP_SUBN_VX_VY:
 		 begin
+		    case(ctr_op)
+		      1:
+			begin
+			   v_d <= v_q_pipe[0] - v_q_pipe[1];
+			   carry <= v_q_pipe[0] >  v_q_pipe[1];
+			   v_waddr <= mem_q_pipe[3][3 : 0];
+			end
+		      
+		      0:
+			begin
+			   v_waddr <= 4'hF;
+			   v_d <= carry[8];
+			end
+		    endcase
 		 end
 	       
 	       ST_OP_SHL_VX_VY:
 		 begin
+		    case(ctr_op)
+		      1:
+			begin
+			   v_d <= v_q_pipe[1] << 1;
+			   v_waddr <= mem_q_pipe[3][3 : 0];
+			end
+		      
+		      0:
+			begin
+			   v_waddr <= 4'hF;
+			   v_d <= v_q_pipe[2][0];	
+			end
+		    endcase		    
 		 end
 
 	       ST_OP_LD_B_VX:
@@ -640,35 +693,136 @@ module interpreter(
 	     we <= 0;
 	  end
      end
-
+   
    always @ (posedge clk)
      begin
 	case(state_op)
 	  
 	  ST_OP_IDLE:
 	    begin
-
+	       
 	       if ( (state_pipe[1] == ST_RD_U) & (opcode_pipe[1] == OP_VX_VY))
 		 begin
+		    
+		    case(mem_q_pipe[0][3 : 0])
+		      0:
+			state_op <= ST_OP_LD_VX_VY;
+
+		      1:
+			state_op <= ST_OP_OR_VX_VY;
+
+		      2:
+			state_op <= ST_OP_AND_VX_VY;
+		      
+		      3:
+			state_op <= ST_OP_XOR_VX_VY;
+
+		      4:
+			state_op <= ST_OP_ADD_VX_VY;
+
+		      5:
+			state_op <= ST_OP_SUB_VX_VY;
+
+		      6:
+			state_op <= ST_OP_SHR_VX_VY;
+
+		      7:
+			state_op <= ST_OP_SUBN_VX_VY;
+		      
+		      8:
+			state_op <= ST_OP_SHL_VX_VY;
+		      
+		    endcase // case (mem_q_pipe[0][3 : 0])
 		 end
 	       
 	       if ( (state_pipe[1] == ST_RD_U) & (opcode_pipe[1] == OP_LD_VX))
 		 begin
-		    if (mem_q_pipe[0] == 8'h33)
-		      begin
-			 state_op <= ST_OP_LD_B_VX;
-		      end
-		    else if (mem_q_pipe[0] == 8'h29)
-		      begin
-			 state_op <= ST_OP_LD_F_VX;
-		      end
-		    else if (mem_q_pipe[0] == 8'h65)
-		      begin
-			 state_op <= ST_OP_LD_VX_I;
-		      end
+		    case(mem_q_pipe[0])
+		      8'h33:
+			state_op <= ST_OP_LD_B_VX;
+		      
+		      8'h29:
+			state_op <= ST_OP_LD_F_VX;
+		      
+		      8'h65:
+			state_op <= ST_OP_LD_VX_I;
+		    endcase
+		 end // if ( (state_pipe[1] == ST_RD_U) & (opcode_pipe[1] == OP_LD_VX))
+	    end // case: ST_OP_IDLE
+
+	  ST_OP_LD_VX_VY:
+	    begin
+	       if (ctr_op == 0)
+		 begin
+		    state_op <= ST_IDLE;
 		 end
 	    end
 
+	  ST_OP_OR_VX_VY:
+	    begin
+	       if (ctr_op == 0)
+		 begin
+		    state_op <= ST_IDLE;
+		 end
+	    end
+
+	  ST_OP_AND_VX_VY:
+	    begin
+	       if (ctr_op == 0)
+		 begin
+		    state_op <= ST_IDLE;
+		 end
+	    end
+
+	  ST_OP_XOR_VX_VY:
+	    begin
+	       if (ctr_op == 0)
+		 begin
+		    state_op <= ST_IDLE;
+		 end
+	    end
+
+	  ST_OP_ADD_VX_VY:
+	    begin
+	       if (ctr_op == 0)
+		 begin
+		    state_op <= ST_IDLE;
+		 end
+	    end
+
+	  ST_OP_SUB_VX_VY:
+	    begin
+	       if (ctr_op == 0)
+		 begin
+		    state_op <= ST_IDLE;
+		 end
+	    end
+	  
+	  ST_OP_SHR_VX_VY:
+	    begin
+	       if (ctr_op == 0)
+		 begin
+		    state_op <= ST_IDLE;
+		 end
+	    end
+
+	  ST_OP_SUBN_VX_VY:
+	    begin
+	       if (ctr_op == 0)
+		 begin
+		    state_op <= ST_IDLE;
+		 end
+	    end
+
+	  ST_OP_SHL_VX_VY:
+	    begin
+	       if (ctr_op == 0)
+		 begin
+		    state_op <= ST_IDLE;
+		 end
+	    end
+
+	  
 	  ST_OP_LD_B_VX:
 	    begin
 	       if (ctr_op == 1)
@@ -736,6 +890,15 @@ module interpreter(
 	    
 	    ST_OP_XOR_VX_VY:
 	      v_we <= ctr_op == 0;
+
+	    ST_OP_ADD_VX_VY:
+	      v_we <= (ctr_op < 2);
+	    
+	    ST_OP_SUB_VX_VY:
+	      v_we <= (ctr_op < 2);
+
+	    ST_OP_SHR_VX_VY:
+	      v_we <= (ctr_op < 2);
 	    
 	    ST_OP_LD_VX_I:
 	      v_we <= ctr_op == 0;
@@ -768,8 +931,10 @@ module interpreter(
 	.INIT(1),
 	.SPRITE_FILE_NAME("projects/chip8/cfg/sprite.hex"),
 	.SPRITE_FILE_WIDTH(80),
-	.PROGRAM_FILE_NAME("projects/chip8/cfg/pong.hex"),
-	.PROGRAM_FILE_WIDTH(256)
+	.PROGRAM_FILE_NAME("projects/chip8/cfg/test.hex"),
+	.PROGRAM_FILE_WIDTH(16)
+	//.PROGRAM_FILE_NAME("projects/chip8/cfg/pong.hex"),
+	//.PROGRAM_FILE_WIDTH(256)
 	) mem (
 	       .clk(clk),
 	       .we(we),
@@ -847,7 +1012,6 @@ module interpreter(
 		      .raddr(sp_raddr),
 		      .q(sp_q)
 		      );
-   
 
    always @ (_v_q)
      begin
