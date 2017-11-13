@@ -201,9 +201,9 @@ module interpreter(
 	  
 	  ST_DRAW:
 	    begin
-	       if (~draw_busy & (mem_q_pipe[1][7 : 4] != 4'hD) & (mem_q_pipe[2][7 : 4] != 4'hD ))
+	       if ( ~draw_busy & (ctr_op == 0) )
 		 begin
-			 state <= ST_OP;
+		    state <= ST_OP;
 		 end
 	    end
 	endcase // case (state)
@@ -233,6 +233,9 @@ module interpreter(
 		 ctr_op <= 1;
 
 	       OP_VX_VY:
+		 ctr_op <= 1;
+
+	       OP_DRW_VX_VY_NIB:
 		 ctr_op <= 1;
 	       
 	       OP_SE_VX_VY:
@@ -289,7 +292,10 @@ module interpreter(
 		    4'hE:
 		      ctr_op <= 2;
 		  endcase // case (mem_q_pipe[0][3: 0])
-		  
+	       end // if (opcode_pipe[1] == OP_VX_VY)
+	     else if (opcode_pipe[1] == OP_DRW_VX_VY_NIB)
+	       begin
+		  ctr_op <= 2;
 	       end
 	  end
 	else if (ctr_op > 0)
@@ -921,6 +927,10 @@ module interpreter(
 	  begin
 	     draw_en <= 1;
 	  end
+	else if ( (state_pipe[1] == ST_RD_U) & (opcode_pipe[2] == OP_SYS) )
+	  begin
+	     draw_en <= mem_q_pipe[0] = 8'hE0;
+	  end	  
 	else
 	  begin
 	     draw_en <= 0;
