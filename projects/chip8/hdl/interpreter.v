@@ -899,6 +899,12 @@ module interpreter(
 
 	    ST_OP_SHR_VX_VY:
 	      v_we <= (ctr_op < 2);
+
+	    ST_OP_SUBN_VX_VY:
+	      v_we <= (ctr_op < 2);
+
+	    ST_OP_SHL_VX_VY:
+	      v_we <= (ctr_op < 2);
 	    
 	    ST_OP_LD_VX_I:
 	      v_we <= ctr_op == 0;
