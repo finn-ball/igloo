@@ -636,14 +636,14 @@ module interpreter(
 		      0:
 			begin
 			   v_waddr <= 4'hF;
-			   v_d <= v_q_pipe[2][0];	
+			   v_d <= v_q_pipe[2][7];	
 			end
 		    endcase		    
 		 end
-
+	       
 	       ST_OP_LD_B_VX:
 		 begin
-
+		    
 		    if (ctr_op < 3)
 		      begin
 			 waddr <= waddr + 1;
@@ -705,31 +705,31 @@ module interpreter(
 		 begin
 		    
 		    case(mem_q_pipe[0][3 : 0])
-		      0:
+		      4'h0:
 			state_op <= ST_OP_LD_VX_VY;
 
-		      1:
+		      4'h1:
 			state_op <= ST_OP_OR_VX_VY;
 
-		      2:
+		      4'h2:
 			state_op <= ST_OP_AND_VX_VY;
 		      
-		      3:
+		      4'h3:
 			state_op <= ST_OP_XOR_VX_VY;
 
-		      4:
+		      4'h4:
 			state_op <= ST_OP_ADD_VX_VY;
 
-		      5:
+		      4'h5:
 			state_op <= ST_OP_SUB_VX_VY;
 
-		      6:
+		      4'h6:
 			state_op <= ST_OP_SHR_VX_VY;
-
-		      7:
+		      
+		      4'h7:
 			state_op <= ST_OP_SUBN_VX_VY;
 		      
-		      8:
+		      4'hE:
 			state_op <= ST_OP_SHL_VX_VY;
 		      
 		    endcase // case (mem_q_pipe[0][3 : 0])
