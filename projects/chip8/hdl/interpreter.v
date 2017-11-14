@@ -231,7 +231,7 @@ module interpreter(
 	       OP_ADD_VX_BYTE:
 		 ctr_op <= 0;
 
-	       OP_OP_RND_VX_BYTE:
+	       OP_RND_VX_BYTE:
 		 ctr_op <= 0;
 
 	       OP_SKP_VX:
