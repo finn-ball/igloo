@@ -24,11 +24,12 @@ module interpreter(
    localparam OP_SNE_VX_BYTE    = 4;
    localparam OP_SE_VX_VY       = 5;
    localparam OP_LD_VX_BYTE     = 6;
+   
    localparam OP_ADD_VX_BYTE    = 7;
    localparam OP_VX_VY          = 8;
    localparam OP_SNE_VX_VY      = 9;
    localparam OP_LD_I_ADDR      = 10;
-   localparam OP_JP_V0_ADDR     = 11;
+   localparam OP_JP_V0_ADDR     = 11; 
    localparam OP_RND_VX_BYTE    = 12;
    localparam OP_DRW_VX_VY_NIB  = 13;
    localparam OP_SKP_VX         = 14;
@@ -177,6 +178,7 @@ module interpreter(
    always @ (posedge clk)
      begin
 	case (state)
+	  
 	  ST_IDLE:
 	    begin
 	       state <= ST_RD_L;
@@ -222,32 +224,24 @@ module interpreter(
 	if (state_pipe[0] == ST_RD_U)
 	  begin
 	     case(opcode_pipe[1])
-	       OP_SYS:
-		 ctr_op <= 1;
 	       
-	       OP_JP_ADDR:
-		 ctr_op <= 1;
-	       
-	       OP_CALL_ADDR:
-		 ctr_op <= 1;
-	       
-	       OP_LD_VX:
-		 ctr_op <= 1;
-	       
-	       OP_SE_VX_BYTE:
-		 ctr_op <= 1;
-	       
-	       OP_SNE_VX_BYTE:
-		 ctr_op <= 1;
+	       OP_LD_VX_BYTE:
+		 ctr_op <= 0;
 
-	       OP_VX_VY:
-		 ctr_op <= 1;
+	       OP_ADD_VX_BYTE:
+		 ctr_op <= 0;
 
-	       OP_DRW_VX_VY_NIB:
-		 ctr_op <= 1;
+	       OP_OP_RND_VX_BYTE:
+		 ctr_op <= 0;
+
+	       OP_SKP_VX:
+		 ctr_op <= 0;
+
+	       OP_JP_V0_ADDR:
+		 ctr_op <= 0;
 	       
-	       OP_SE_VX_VY:
-		 ctr_op <= 1;	       
+	       default:
+		 ctr_op <= 1;
 	       
 	     endcase // case (opcode_pipe[1])
 	  end // if (state_pipe[0] == ST_RD_U)
@@ -256,18 +250,23 @@ module interpreter(
 	  begin
 	     if (opcode_pipe[1] == OP_LD_VX)
 	       begin
-		  if (mem_q_pipe[0] == 8'h33)
-		    begin
-		       ctr_op <= 4;
-		    end
-		  else if (mem_q_pipe[0] == 8'h65)
-		    begin
-		       ctr_op <= mem_q_pipe[2][3 : 0] + 2;
-		    end
-		  else
-		    begin
-		       ctr_op <= 0;
-		    end
+		  
+		  case(mem_q_pipe[0][3 : 0])
+		    
+		    8'h07:
+		      ctr_op <= 0;
+		    
+		    8'h33:
+		      ctr_op <= 4;
+		    
+		    8'h65:
+		      ctr_op <= mem_q_pipe[2][3 : 0] + 2;
+		    
+		    default:
+		      ctr_op <= 1;
+		    
+		  endcase
+		  
 	       end // if (opcode_pipe[1] == OP_LD_VX)
 	     else if (opcode_pipe[1] == OP_VX_VY)
 	       begin
@@ -277,7 +276,7 @@ module interpreter(
 		      ctr_op <= 1;
 		    
 		    4'h1:
-		       ctr_op <= 1;
+		      ctr_op <= 1;
 		    
 		    4'h2:
 		      ctr_op <= 1;
@@ -299,6 +298,7 @@ module interpreter(
 		    
 		    4'hE:
 		      ctr_op <= 2;
+		    
 		  endcase // case (mem_q_pipe[0][3: 0])
 	       end // if (opcode_pipe[1] == OP_VX_VY)
 	     else if (opcode_pipe[1] == OP_DRW_VX_VY_NIB)
@@ -444,31 +444,7 @@ module interpreter(
 	
 	else if (state_pipe[1] == ST_RD_L)
 	  begin
-	     
-	     case(opcode_pipe[0]) // remove?
-	       
-	       OP_SE_VX_BYTE:
-		 v_raddr <= mem_q_pipe[0][3 : 0];
-	       
-	       OP_SNE_VX_BYTE:
-		 v_raddr <= mem_q_pipe[0][3 : 0];
-	       
-	       OP_RND_VX_BYTE:
-		 v_raddr <= mem_q_pipe[0][3 : 0];
-	       
-	       OP_DRW_VX_VY_NIB:
-		 v_raddr <= mem_q_pipe[0][3 : 0];
-
-	       OP_ADD_VX_BYTE:
-		 v_raddr <= mem_q_pipe[0][3 : 0];
-
-	       OP_VX_VY:
-		 v_raddr <= mem_q_pipe[0][3 : 0];
-	       
-	       OP_LD_VX:
-		 v_raddr <= mem_q_pipe[0][3 : 0];
-	       
-	     endcase // case (opcode_pipe[0])
+	     v_raddr <= mem_q_pipe[0][3 : 0];
 	  end // if (state_pipe[1] == ST_RD_L)
 	
 	else if (state_pipe[1] == ST_RD_U)
@@ -664,6 +640,7 @@ module interpreter(
 		      end
 		    
 		    case(ctr_op)
+		      
 		      2:
 			mem_d[3 : 0] <= dec_to_bcd_q[3 : 0];
 		      
@@ -672,6 +649,7 @@ module interpreter(
 		      
 		      0:
 			mem_d[3 : 0] <= dec_to_bcd_q[11 : 8];
+		      
 		    endcase // case (ctr_op)
 		 end
 
