@@ -6,9 +6,7 @@ module interpreter(
 		   input 	  rx_i_v,
 		   output 	  vs,
 		   output 	  hs,
-		   output [3 : 0] blue,
-		   output [3 : 0] red,
-		   output [3 : 0] green
+		   output         draw_o
 		   );
    
    localparam ST_IDLE        = 0;
@@ -103,7 +101,6 @@ module interpreter(
    wire [3 : 0]  vram_nibbles;
    reg 		 draw_en = 0, cls_en = 0;
    wire 	 draw_col;
-   wire 	 draw_out;
 
    localparam SP_ADDR_WIDTH = 4;
    localparam SP_DATA_WIDTH = ADDR_WIDTH;
@@ -124,11 +121,7 @@ module interpreter(
    wire [7 : 0] 	    sprite_location_q;   
 
    reg [8 : 0] 		    carry = 0; 		    
-   
-   assign red = draw_out ? 4'b1111 : 0 ;
-   assign blue = draw_out ? 4'b1111 : 0 ;
-   assign green = draw_out ? 4'b1111 : 0;
-   
+      
    always @ (state, state_op, draw_raddr, pc, dump_raddr)
      begin
 	if (state == ST_DRAW)
@@ -1019,7 +1012,7 @@ module interpreter(
 	     .mem_d(mem_q_pipe[0]),
 	     .busy(draw_busy),
 	     .col(draw_col),
-	     .draw_out(draw_out),
+	     .draw_out(draw_o),
 	     .hs_o(hs),
 	     .vs_o(vs)
 	     );
