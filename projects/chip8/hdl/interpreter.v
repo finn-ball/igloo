@@ -824,9 +824,6 @@ module interpreter(
 	       OP_RND_VX_BYTE:
 		 v_we <= 1;
 	       
-	       OP_LD_VX:
-		 v_we <= mem_q_pipe[0] == 8'h07;
-	       
 	       default:
 		 v_we <= 0;
 	       
@@ -846,18 +843,9 @@ module interpreter(
 	else
 	  case(state_op)
 
-	    ST_OP_LD_VX_VY:
-	      v_we <= ctr_op == 0;
+	    ST_OP_IDLE:
+	      v_we <= 0;
 	    
-	    ST_OP_OR_VX_VY:
-	      v_we <= ctr_op == 0;
-	    
-	    ST_OP_AND_VX_VY:
-	      v_we <= ctr_op == 0;
-	    
-	    ST_OP_XOR_VX_VY:
-	      v_we <= ctr_op == 0;
-
 	    ST_OP_ADD_VX_VY:
 	      v_we <= (ctr_op < 2);
 	    
@@ -873,11 +861,26 @@ module interpreter(
 	    ST_OP_SHL_VX_VY:
 	      v_we <= (ctr_op < 2);
 	    
-	    ST_OP_LD_VX_I:
-	      v_we <= ctr_op == 0;
+	    ST_OP_LD_DT_VX:
+	      v_we <= 0;
+
+	    ST_OP_LD_ST_VX:
+	      v_we <= 0;
+
+	    ST_OP_ADD_I_VX:
+	      v_we <= 0;
+
+	    ST_OP_LD_F_VX:
+	      v_we <= 0;
+
+	    ST_OP_LD_B_VX:
+	      v_we <= 0;
+	    
+	    ST_OP_LD_I_VX:
+	      v_we <= 0;
 	    
 	    default:
-	      v_we <= 0;
+	      v_we <= ctr_op == 0;
 	    
 	  endcase
      end // always @ (posedge clk)
