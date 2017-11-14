@@ -16,20 +16,6 @@ module interpreter(
    localparam ST_RD_U        = 2;
    localparam ST_OP          = 3;
    localparam ST_DRAW        = 4;
-
-   localparam ST_OP_IDLE       = 0;
-   localparam ST_OP_LD_B_VX    = 1;
-   localparam ST_OP_LD_VX_I    = 2;
-   localparam ST_OP_LD_F_VX    = 3;
-   localparam ST_OP_LD_VX_VY   = 4;
-   localparam ST_OP_OR_VX_VY   = 5;
-   localparam ST_OP_AND_VX_VY  = 6;
-   localparam ST_OP_XOR_VX_VY  = 7;
-   localparam ST_OP_ADD_VX_VY  = 8;
-   localparam ST_OP_SUB_VX_VY  = 9;
-   localparam ST_OP_SHR_VX_VY  = 10;
-   localparam ST_OP_SUBN_VX_VY = 11;
-   localparam ST_OP_SHL_VX_VY  = 12;
    
    localparam OP_SYS            = 0;
    localparam OP_JP_ADDR        = 1;
@@ -47,6 +33,28 @@ module interpreter(
    localparam OP_DRW_VX_VY_NIB  = 13;
    localparam OP_SKP_VX         = 14;
    localparam OP_LD_VX          = 15;
+
+   localparam ST_OP_IDLE       = 0;
+      
+   localparam ST_OP_LD_VX_VY   = 1;
+   localparam ST_OP_OR_VX_VY   = 2;
+   localparam ST_OP_AND_VX_VY  = 3;
+   localparam ST_OP_XOR_VX_VY  = 4;
+   localparam ST_OP_ADD_VX_VY  = 5;
+   localparam ST_OP_SUB_VX_VY  = 6;
+   localparam ST_OP_SHR_VX_VY  = 7;
+   localparam ST_OP_SUBN_VX_VY = 8;
+   localparam ST_OP_SHL_VX_VY  = 9;
+   
+   localparam ST_OP_LD_VX_DT   = 10;
+   localparam ST_OP_LD_VX_K    = 11;
+   localparam ST_OP_LD_DT_VX   = 12;
+   localparam ST_OP_LD_ST_VX   = 13;
+   localparam ST_OP_ADD_I_VX   = 14;
+   localparam ST_OP_LD_F_VX    = 15;
+   localparam ST_OP_LD_B_VX    = 16;
+   localparam ST_OP_LD_I_VX    = 17;
+   localparam ST_OP_LD_VX_I    = 18;
    
    localparam DATA_WIDTH = 8;
    localparam ADDR_WIDTH = 12;
@@ -239,7 +247,7 @@ module interpreter(
 		 ctr_op <= 1;
 	       
 	       OP_SE_VX_VY:
-		 ctr_op <= 1;
+		 ctr_op <= 1;	       
 	       
 	     endcase // case (opcode_pipe[1])
 	  end // if (state_pipe[0] == ST_RD_U)
@@ -744,109 +752,62 @@ module interpreter(
 	       if ( (state_pipe[1] == ST_RD_U) & (opcode_pipe[1] == OP_LD_VX))
 		 begin
 		    case(mem_q_pipe[0])
-		      8'h33:
-			state_op <= ST_OP_LD_B_VX;
+		      
+		      8'h07:
+			state_op <= ST_OP_LD_VX_DT;
+		      
+		      8'h0A:
+			state_op <= ST_OP_LD_VX_K;
+
+		      8'h15:
+			state_op <= ST_OP_LD_DT_VX;
+		      
+		      8'h18:
+			state_op <= ST_OP_LD_ST_VX;
+		      
+		      8'h1E:
+			state_op <= ST_OP_ADD_I_VX;
 		      
 		      8'h29:
 			state_op <= ST_OP_LD_F_VX;
 		      
+		      8'h33:
+			state_op <= ST_OP_LD_B_VX;
+		      
+		      8'h55:
+			state_op <= ST_OP_LD_I_VX;
+		      		      
 		      8'h65:
 			state_op <= ST_OP_LD_VX_I;
+		      
 		    endcase
 		 end // if ( (state_pipe[1] == ST_RD_U) & (opcode_pipe[1] == OP_LD_VX))
 	    end // case: ST_OP_IDLE
-
-	  ST_OP_LD_VX_VY:
-	    begin
-	       if (ctr_op == 0)
-		 begin
-		    state_op <= ST_IDLE;
-		 end
-	    end
-
-	  ST_OP_OR_VX_VY:
-	    begin
-	       if (ctr_op == 0)
-		 begin
-		    state_op <= ST_IDLE;
-		 end
-	    end
-
-	  ST_OP_AND_VX_VY:
-	    begin
-	       if (ctr_op == 0)
-		 begin
-		    state_op <= ST_IDLE;
-		 end
-	    end
-
-	  ST_OP_XOR_VX_VY:
-	    begin
-	       if (ctr_op == 0)
-		 begin
-		    state_op <= ST_IDLE;
-		 end
-	    end
-
-	  ST_OP_ADD_VX_VY:
-	    begin
-	       if (ctr_op == 0)
-		 begin
-		    state_op <= ST_IDLE;
-		 end
-	    end
-
-	  ST_OP_SUB_VX_VY:
-	    begin
-	       if (ctr_op == 0)
-		 begin
-		    state_op <= ST_IDLE;
-		 end
-	    end
 	  
-	  ST_OP_SHR_VX_VY:
+	  ST_OP_LD_B_VX: 
 	    begin
-	       if (ctr_op == 0)
-		 begin
-		    state_op <= ST_IDLE;
-		 end
-	    end
-
-	  ST_OP_SUBN_VX_VY:
-	    begin
-	       if (ctr_op == 0)
-		 begin
-		    state_op <= ST_IDLE;
-		 end
-	    end
-
-	  ST_OP_SHL_VX_VY:
-	    begin
-	       if (ctr_op == 0)
-		 begin
-		    state_op <= ST_IDLE;
-		 end
-	    end
-
-	  
-	  ST_OP_LD_B_VX:
-	    begin
-	       if (ctr_op == 1)
+	       if (ctr_op == 1) // change to == 0
 		 begin
 		    state_op <= ST_OP_IDLE;
 		 end
 	    end
 
 	  ST_OP_LD_F_VX:
-	    state_op <= ST_OP_IDLE;
+	    state_op <= ST_OP_IDLE; // change to == 0
 
 	  ST_OP_LD_VX_I:
 	    begin
-	       if (ctr_op == 1)
+	       if (ctr_op == 1) // change == 0
 		 begin
 		    state_op <= ST_OP_IDLE;
 		 end
 	    end
+
+	  default:
+	    if (ctr_op == 0)
+	      begin
+		 state_op <= ST_OP_IDLE;
+	      end
 	  
 	endcase // case (state_op)
      end
