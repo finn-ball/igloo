@@ -233,10 +233,7 @@ module interpreter(
 
 	       OP_SKP_VX:
 		 ctr_op <= 0;
-
-	       OP_JP_V0_ADDR:
-		 ctr_op <= 1;
-
+	       
 	       OP_SE_VX_VY:
 		 ctr_op <= 2;
 
@@ -373,9 +370,28 @@ module interpreter(
 		      end
 		 end
 	       
-	       OP_JP_V0_ADDR: // check
+	       OP_JP_V0_ADDR:
 		 begin
 		    pc <= { {mem_q_pipe[1][3 : 0]} , {mem_q_pipe[0][7 : 0]} } + v_q_pipe[0];
+		 end
+
+	       OP_SKP_VX:
+		 begin
+		    if (rx_i_v)
+		      begin
+			 case(mem_q_pipe[0][3 : 0])
+			   8'h9E:
+			     if (v_q_pipe[0] == rx_i)
+			       begin
+				  pc <= pc + 2;
+			       end
+			   8'hA1:
+			     if (v_q_pipe[0] != rx_i)
+			       begin
+				  pc <= pc + 2;
+			       end
+			 endcase
+		      end
 		 end
 	       
 	     endcase // case (opcode_pipe[1])
@@ -970,10 +986,12 @@ module interpreter(
 	.INIT(1),
 	.SPRITE_FILE_NAME("projects/chip8/cfg/sprite.hex"),
 	.SPRITE_FILE_WIDTH(80),
-	//.PROGRAM_FILE_NAME("projects/chip8/cfg/test.hex"),
-	//.PROGRAM_FILE_WIDTH(16)
-	.PROGRAM_FILE_NAME("projects/chip8/cfg/pong.hex"),
-	.PROGRAM_FILE_WIDTH(256)
+	.PROGRAM_FILE_NAME("projects/chip8/cfg/test.hex"),
+	.PROGRAM_FILE_WIDTH(16)
+	//.PROGRAM_FILE_NAME("projects/chip8/cfg/pong_test.hex"),
+	//.PROGRAM_FILE_WIDTH(256)
+	//.PROGRAM_FILE_NAME("projects/chip8/cfg/pong.hex"),
+	//.PROGRAM_FILE_WIDTH(256)
 	) mem (
 	       .clk(clk),
 	       .we(we),
