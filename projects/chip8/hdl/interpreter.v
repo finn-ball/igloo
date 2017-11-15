@@ -60,7 +60,7 @@ module interpreter(
    
    reg [3 : 0] 			  state = ST_IDLE;
    reg [3 : 0] 			  opcode = OP_SYS;
-   reg [3 : 0] 			  state_op = ST_OP_IDLE;
+   reg [4 : 0] 			  state_op = ST_OP_IDLE;
 
    reg [PIPE_LENGTH - 1 : 0] 	  op_en_pipe;
    
@@ -255,9 +255,15 @@ module interpreter(
 		    
 		    8'h15:
 		      ctr_op <= 0;
+
+		    8'h1E:
+		      ctr_op <= 0;
 		    
 		    8'h33:
-		      ctr_op <= 4;
+		      ctr_op <= 5;
+
+		    8'h55:
+		      ctr_op <= mem_q_pipe[2][3 : 0] + 1;
 		    
 		    8'h65:
 		      ctr_op <= mem_q_pipe[2][3 : 0] + 2;
@@ -503,7 +509,10 @@ module interpreter(
 		      
 		      8'h33:
 			waddr <= I[11 : 0];
-		      
+
+		      8'h55:
+			v_raddr <= 0;
+
 		      8'h65:
 			begin
 			   v_waddr <= 0;
@@ -648,29 +657,21 @@ module interpreter(
 		    
 		    case(ctr_op)
 		      
-		      2:
-			mem_d[3 : 0] <= dec_to_bcd_q[3 : 0];
+		      3:
+			mem_d <= dec_to_bcd_q[3 : 0];
 		      
-		      1:			
-			mem_d[3 : 0] <= dec_to_bcd_q[7 : 4];
+		      2:			
+			mem_d <= dec_to_bcd_q[7 : 4];
 		      
-		      0:
-			mem_d[3 : 0] <= dec_to_bcd_q[11 : 8];
+		      1:
+			mem_d <= dec_to_bcd_q[11 : 8];
 		      
 		    endcase // case (ctr_op)
 		 end
-
-	       ST_OP_LD_VX_I:
-		 begin
-		    v_waddr <= v_waddr + v_we;
-		    v_d <= mem_q_pipe[0];
-		    dump_raddr <= dump_raddr + 1;
-		 end
-
+	       
 	       ST_OP_LD_F_VX:
 		 begin
-		    I[7 : 0] <= sprite_location_q;
-		    I[15 : 8] <= 0;
+		    I <= sprite_location_q;
 		 end
 
 	       ST_OP_LD_VX_K:
@@ -681,7 +682,36 @@ module interpreter(
 			 v_waddr <= mem_q_pipe[2][3 : 0];
 		      end
 		 end
-	       
+
+	       ST_OP_LD_I_VX:
+		 begin
+		    v_raddr <= v_raddr + 1;
+		    mem_d <= v_q_pipe[0];
+		    
+		    if ( (state_pipe[2] == ST_RD_U) | (state_pipe[3] == ST_RD_U) )
+		      begin
+			 waddr <= I;
+		      end
+		    else
+		      begin
+			 waddr <= waddr + 1;
+		      end
+		 end
+
+	       ST_OP_LD_VX_I:
+		 begin
+		    if ( (state_pipe[2] == ST_RD_U) | (state_pipe[3] == ST_RD_U) )
+		      begin
+			 v_waddr <= 0;
+		      end
+		    else
+		      begin
+			 v_waddr <= v_waddr + 1;
+		      end
+		    v_d <= mem_q_pipe[0];
+		    dump_raddr <= dump_raddr + 1;
+		 end
+
 	     endcase // case (state_op)
 	  end // else: !if(state_pipe[1] == ST_RD_U)
 	
@@ -689,17 +719,28 @@ module interpreter(
 
    always @ (posedge clk)
      begin
-	if (state_op == ST_OP_LD_B_VX)
-	  begin
-	     if (ctr_op < 4)
-	       begin
-		  we <= 1;
-	       end
-	  end
-	else
-	  begin
+	case(state_op)
+	  
+	  ST_OP_LD_I_VX:
+	    begin
+	       if ( ~(state_pipe[2] == ST_RD_U) | (state_pipe[3] == ST_RD_U) )
+		 begin
+		    we <= 1;
+		 end
+	    end
+	  
+	  ST_OP_LD_B_VX:
+	    begin
+	       if (ctr_op < 4)
+		 begin
+		    we <= 1;
+		 end
+	    end
+	  
+	  default:
 	     we <= 0;
-	  end
+
+	endcase // case (state_op)
      end
    
    always @ (posedge clk)
@@ -766,7 +807,7 @@ module interpreter(
 			state_op <= ST_OP_LD_F_VX;
 		      
 		      8'h33:
-			state_op <= ST_OP_LD_B_VX;
+			state_op <=  ST_OP_LD_B_VX;
 		      
 		      8'h55:
 			state_op <= ST_OP_LD_I_VX;
@@ -785,9 +826,6 @@ module interpreter(
 		    state_op <= ST_OP_IDLE;
 		 end
 	    end
-
-	  ST_OP_LD_F_VX:
-	    state_op <= ST_OP_IDLE; // change to == 0
 
 	  ST_OP_LD_VX_I:
 	    begin
@@ -873,8 +911,14 @@ module interpreter(
 	    ST_OP_LD_I_VX:
 	      v_we <= 0;
 
+	    ST_OP_LD_ST_VX:
+	      v_we <= 0;
+
 	    ST_OP_LD_VX_K:
 	      v_we <= rx_i_v;
+
+	    ST_OP_LD_VX_I:
+	      v_we <= 1;
 	    
 	    default:
 	      v_we <= ctr_op == 0;
@@ -1023,7 +1067,7 @@ module interpreter(
 	.FILE_NAME("projects/chip8/cfg/sprite_location.hex")
 	) sprite_location (
 			   .clk(clk),
-			   .raddr(v_q_pipe[1][3 : 0]),
+			   .raddr(v_q_pipe[0][3 : 0]),
 			   .q(sprite_location_q)
 			   );
 
