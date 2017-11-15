@@ -24,14 +24,20 @@ module top(
    
    wire [7 : 0] 	  _rx_i;
    wire 		  _rx_i_v;
+
+   wire 		  draw_o;
    
    assign led_o[0] = 1;
    assign led_o[1] = clk_led;
    
    assign _rx_i = rx_i;
    assign _rx_i_v = rx_i_v;
+
+   assign red_o = draw_o ? 4'b1111 : 0;
+   assign blue_o = draw_o ? 4'b1111 : 0;
+   assign green_o = draw_o ? 4'b1111 : 0;
    
-   always @ (posedge ice_clk_i)
+   always @ (posedge clk_25)
      begin
 	rx_i_v <= tx_o_v & ~rx_i_v_d;
 	rx_i_v_d <= tx_o_v;
@@ -82,9 +88,7 @@ module top(
 			   .rx_i_v(rx_i_v),
 			   .hs(hs_o),
 			   .vs(vs_o),
-			   .red(red_o),
-			   .blue(blue_o),
-			   .green(green_o)
+			   .draw_o(draw_o)
 			   );
    
 endmodule // top

@@ -61,6 +61,8 @@ module interpreter(
    reg [3 : 0] 			  state = ST_IDLE;
    reg [3 : 0] 			  opcode = OP_SYS;
    reg [3 : 0] 			  state_op = ST_OP_IDLE;
+
+   reg [PIPE_LENGTH - 1 : 0] 	  op_en_pipe;
    
    reg [15 : 0] 		  I = 0;
    
@@ -149,6 +151,7 @@ module interpreter(
 	I_pipe[0] <= I;
 	dec_to_bcd_q_pipe[0] <= dec_to_bcd_q;
 	pc_pipe[0] <= pc;
+	op_en_pipe[0] <= (state == ST_RD_L);
      end
    
    genvar 				       i;
@@ -164,6 +167,7 @@ module interpreter(
 		I_pipe[i] <= I_pipe[i - 1];
 		dec_to_bcd_q_pipe[i] <= dec_to_bcd_q_pipe[i - 1];
 		pc_pipe[i] <= pc_pipe[i - 1];
+		op_en_pipe[i] <= op_en_pipe[i - 1];
 	     end
 	end      
    endgenerate
@@ -244,9 +248,12 @@ module interpreter(
 	     if (opcode_pipe[1] == OP_LD_VX)
 	       begin
 		  
-		  case(mem_q_pipe[0][3 : 0])
+		  case(mem_q_pipe[0])
 		    
 		    8'h07:
+		      ctr_op <= 0;
+		    
+		    8'h15:
 		      ctr_op <= 0;
 		    
 		    8'h33:
@@ -298,6 +305,10 @@ module interpreter(
 	       begin
 		  ctr_op <= 2;
 	       end
+	  end
+	else if (state_op == ST_OP_LD_VX_K)
+	  begin
+	     ctr_op <= rx_i_v ? 0 : 1;
 	  end
 	else if (ctr_op > 0)
 	  begin
@@ -479,24 +490,27 @@ module interpreter(
 
 	       OP_LD_VX:
 		 begin
-		    if (mem_q_pipe[0] == 8'h07)
-		      begin
-			 v_d <= dt;
-			 v_waddr <= mem_q_pipe[1][3 : 0];
-		      end
-		    else if (mem_q_pipe[0] == 8'h1E)
-		      begin
-			 I <= (I + v_q_pipe[0]);
-		      end
-		    else if (mem_q_pipe[0] == 8'h33)
-		      begin
-			 waddr <= I[11 : 0];
-		      end
-		    else if (mem_q_pipe[0] == 8'h65)
-		      begin
-			 v_waddr <= 0;
-			 dump_raddr <= I[ADDR_WIDTH - 1 : 0];
-		      end
+		    case(mem_q_pipe[0])
+		      
+		      8'h07:
+			begin
+			   v_d <= dt;
+			   v_waddr <= mem_q_pipe[1][3 : 0];
+			end
+		      
+		      8'h1E:
+			I <= (I + v_q_pipe[0]);
+		      
+		      8'h33:
+			waddr <= I[11 : 0];
+		      
+		      8'h65:
+			begin
+			   v_waddr <= 0;
+			   dump_raddr <= I[ADDR_WIDTH - 1 : 0];
+			end
+		      
+		    endcase // case (mem_q_pipe[0])
 		 end
 	     endcase // case (opcode_pipe[0])
 	     
@@ -658,6 +672,15 @@ module interpreter(
 		    I[7 : 0] <= sprite_location_q;
 		    I[15 : 8] <= 0;
 		 end
+
+	       ST_OP_LD_VX_K:
+		 begin
+		    v_d <= rx_i;
+		    if (state_pipe[2] == ST_RD_U)
+		      begin
+			 v_waddr <= mem_q_pipe[2][3 : 0];
+		      end
+		 end
 	       
 	     endcase // case (state_op)
 	  end // else: !if(state_pipe[1] == ST_RD_U)
@@ -747,7 +770,7 @@ module interpreter(
 		      
 		      8'h55:
 			state_op <= ST_OP_LD_I_VX;
-		      		      
+		      
 		      8'h65:
 			state_op <= ST_OP_LD_VX_I;
 		      
@@ -849,6 +872,9 @@ module interpreter(
 	    
 	    ST_OP_LD_I_VX:
 	      v_we <= 0;
+
+	    ST_OP_LD_VX_K:
+	      v_we <= rx_i_v;
 	    
 	    default:
 	      v_we <= ctr_op == 0;
@@ -867,7 +893,7 @@ module interpreter(
 	     draw_en <= 0;
 	  end
 
-	if ( (state_pipe[1] == ST_RD_U) & (opcode_pipe[1] == OP_SYS))
+	if ( (state_pipe[1] == ST_RD_U) & (opcode_pipe[1] == OP_SYS) )
 	  begin
 	     cls_en <= 1;
 	  end
@@ -1039,10 +1065,9 @@ module interpreter(
 	
 	dt_pulse_d <= dt_pulse;
 	
-	if ( (mem_q_pipe[1] == 8'h15) & (opcode_pipe[2] == OP_LD_VX) & (state_pipe[2] == ST_RD_U ) )
+	if (state_op ==  ST_OP_LD_DT_VX)//(mem_q_pipe[1] == 8'h15) & (opcode_pipe[2] == OP_LD_VX) & (state_pipe[2] == ST_RD_U ) )
 	  begin
-	     //dt <= v_q_pipe[0];
-	     dt <= 5; // sim only
+	     dt <= v_q_pipe[0];
 	  end
 	else if  ( dt > 0 )
 	  begin
