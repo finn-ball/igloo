@@ -235,8 +235,11 @@ module interpreter(
 		 ctr_op <= 0;
 
 	       OP_JP_V0_ADDR:
-		 ctr_op <= 0;
-	       
+		 ctr_op <= 1;
+
+	       OP_SE_VX_VY:
+		 ctr_op <= 2;
+
 	       default:
 		 ctr_op <= 1;
 	       
@@ -356,7 +359,7 @@ module interpreter(
 	       
 	       OP_SE_VX_BYTE:
 		 begin
-		    if (v_q == mem_q_pipe[0][7 : 0])
+		    if (v_q_pipe[0] == mem_q_pipe[0][7 : 0])
 		      begin
 			 pc <= pc + 2;
 		      end
@@ -364,25 +367,35 @@ module interpreter(
 	       
 	       OP_SNE_VX_BYTE:
 		 begin
-		    if (v_q != mem_q_pipe[0][7 : 0])
+		    if (v_q_pipe[0] != mem_q_pipe[0][7 : 0])
 		      begin
 			 pc <= pc + 2;
 		      end
 		 end
 	       
-	       OP_SE_VX_VY: // check
+	       OP_JP_V0_ADDR: // check
 		 begin
-		    if (state_pipe[0] == ST_OP)
-		      begin
-			 if(v_q_pipe[0] == v_q_pipe[1])
-			   begin
-			      pc <= pc + 2;
-			   end
-		      end
+		    pc <= { {mem_q_pipe[1][3 : 0]} , {mem_q_pipe[0][7 : 0]} } + v_q_pipe[0];
 		 end
 	       
 	     endcase // case (opcode_pipe[1])
 	  end // if (state_pipe[1] == ST_RD_U)
+
+	else if (state_pipe[3] == ST_RD_U)
+	  begin
+	     case (opcode_pipe[3])
+	       
+	       OP_SE_VX_VY: // check
+		 begin
+		    if(v_q_pipe[0] == v_q_pipe[1])
+		      begin
+			 pc <= pc + 2;
+		      end
+		 end
+	       
+	     endcase
+
+	  end
 	
      end // always @ (posedge clk)
    
@@ -461,9 +474,6 @@ module interpreter(
 	  begin
 	     case(opcode_pipe[1])
 
-	       OP_SE_VX_VY:
-		 v_raddr <= mem_q_pipe[0][3 : 0];
-	       
 	       OP_LD_VX_BYTE:
 		 begin
 		    v_waddr <= mem_q_pipe[1][3 : 0];
@@ -475,8 +485,7 @@ module interpreter(
 	       
 	       OP_SE_VX_VY:
 		 begin
-		    v_raddr <= mem_q_pipe[0][7 : 4];
-		    v_waddr <= mem_q_pipe[1][3 : 0];
+		    v_raddr <= v_raddr + 1;
 		 end
 
 	       OP_VX_VY:
@@ -520,7 +529,11 @@ module interpreter(
 			end
 		      
 		    endcase // case (mem_q_pipe[0])
-		 end
+		 end // case: OP_LD_VX
+
+	       OP_JP_V0_ADDR:
+		 v_raddr <= 0;
+	       
 	     endcase // case (opcode_pipe[0])
 	     
 	  end // if (state_pipe[1] == ST_RD_U)
@@ -957,10 +970,10 @@ module interpreter(
 	.INIT(1),
 	.SPRITE_FILE_NAME("projects/chip8/cfg/sprite.hex"),
 	.SPRITE_FILE_WIDTH(80),
-	.PROGRAM_FILE_NAME("projects/chip8/cfg/test.hex"),
-	.PROGRAM_FILE_WIDTH(16)
-	//.PROGRAM_FILE_NAME("projects/chip8/cfg/pong.hex"),
-	//.PROGRAM_FILE_WIDTH(256)
+	//.PROGRAM_FILE_NAME("projects/chip8/cfg/test.hex"),
+	//.PROGRAM_FILE_WIDTH(16)
+	.PROGRAM_FILE_NAME("projects/chip8/cfg/pong.hex"),
+	.PROGRAM_FILE_WIDTH(256)
 	) mem (
 	       .clk(clk),
 	       .we(we),
@@ -1096,8 +1109,8 @@ module interpreter(
      end
    
    clks#(
-	 //.T(418750 / 2) // 60Hz
-	 .T(10 / 2) // quicker for quick sim testing
+	 .T(418750 / 2) // 60Hz
+	 //.T(10 / 2) // quicker for quick sim testing
 	 )
      dt_clks(
 	     .clk_i(clk),
@@ -1109,7 +1122,7 @@ module interpreter(
 	
 	dt_pulse_d <= dt_pulse;
 	
-	if (state_op ==  ST_OP_LD_DT_VX)//(mem_q_pipe[1] == 8'h15) & (opcode_pipe[2] == OP_LD_VX) & (state_pipe[2] == ST_RD_U ) )
+	if (state_op ==  ST_OP_LD_DT_VX)
 	  begin
 	     dt <= v_q_pipe[0];
 	  end
