@@ -187,7 +187,7 @@ PINMAP        = ./boards/$(BOARD)/%s.pcf\n""" % (self._time,
 
         makefile_bulk = """
 YOSYS_FLAGS    = -Q -c $(SCRIPTS)/yosys.tcl
-ARACHNE_FLAGS  = -d $(DEVICE_FAMILY) -P $(FOOTPRINT) -o $(ASC) -p $(PINMAP) $(BLIF)
+ARACHNE_FLAGS  = -r -d $(DEVICE_FAMILY) -P $(FOOTPRINT) -o $(ASC) -p $(PINMAP) $(BLIF)
 
 ICETIME_FLAGS  = -mit -d $(DEVICE) -p $(PINMAP) 
 
