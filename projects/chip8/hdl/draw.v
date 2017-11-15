@@ -17,7 +17,6 @@ module draw(
    localparam ST_IDLE        = 0;
    localparam ST_DRAW_SCREEN = 1;
    localparam ST_DRAW_VRAM   = 2;
-   localparam ST_CLS         = 3;
    
    localparam DATA_WIDTH = 8;
    localparam ADDR_WIDTH = 12;
@@ -154,10 +153,6 @@ endgenerate
 		 begin
 		    state <= ST_DRAW_VRAM;
 		 end
-	       else if (cls_en)
-		 begin
-		    state <= ST_CLS;
-		 end
 	    end
 	  
 	  ST_DRAW_VRAM:
@@ -177,14 +172,6 @@ endgenerate
 	       if (~vs)
 		 begin
 		    state <= draw_vram ? ST_DRAW_VRAM : ST_IDLE;
-		 end
-	    end
-
-	  ST_CLS:
-	    begin
-	       if (~draw_cls)
-		 begin
-		    state <= ST_IDLE;
 		 end
 	    end
 	endcase
@@ -250,7 +237,7 @@ endgenerate
 		  _col <= 1; // screen pix set to unset = collision
 	       end
 	  end
-	else if ( (state_pipe[2] == ST_IDLE) | (state_pipe[0] == ST_CLS) )
+	else if ( (state_pipe[2] == ST_IDLE) | draw_cls )
 	  begin
 	     _col <= 0;
 	     d <= 0;
@@ -283,7 +270,7 @@ endgenerate
 
    always @ (posedge clk)
      begin
-	ctr_vram <= ctr_vram + (state == ST_CLS);
+	ctr_vram <= ctr_vram + draw_cls;
      end
    
    always @ (posedge clk)
@@ -312,7 +299,7 @@ endgenerate
    
    always @ (posedge clk)
      begin
-	we <= (state == ST_DRAW_VRAM) | (state == ST_CLS);
+	we <= (state == ST_DRAW_VRAM) | (draw_cls);
      end
    
    dram_2048x2 vram (
