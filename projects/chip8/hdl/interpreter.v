@@ -129,8 +129,36 @@ module interpreter(
 
    always @ (posedge clk)
      begin
-	
-	rx_i_d <= rx_i_v ? rx_i : rx_i_d;
+
+	if (rx_i_v)
+	  begin
+	     
+	     case (rx_i)
+
+	       8'h61:
+		 rx_i_d <= 8'h0A;
+
+	       8'h62:
+		 rx_i_d <= 8'h0B;
+	       
+	       8'h63:
+		 rx_i_d <= 8'h0C;
+	       
+	       8'h64:
+		 rx_i_d <= 8'h0D;
+	       
+	       8'h65:
+		 rx_i_d <= 8'h0E;
+	       
+	       8'h66:
+		 rx_i_d <= 8'h0F;
+	       
+	       default:
+		 rx_i_d <= rx_i;
+
+	     endcase; // case (rx_i)
+
+	  end
 	
 	if (state_pipe[1] == ST_RD_U)
 	  begin
@@ -266,7 +294,7 @@ module interpreter(
 		 ctr_op <= 2;
 
 	       OP_SKP_VX:
-		 ctr_op <= 5;
+		 ctr_op <= 2;
 
 	       default:
 		 ctr_op <= 1;
