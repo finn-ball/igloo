@@ -436,25 +436,23 @@ module interpreter(
 
 	       OP_SKP_VX:
 		 begin
-		    if (ack_k)
-		      begin
-			 
-			 case(mem_q_pipe[0][7 : 0])
-			   
-			   8'h9E:
-			     if (v_q_pipe[0] == rx_i_d)
-			       begin
-				  pc <= pc + 2;
-			       end
-			   
-			   8'hA1:
-			     if (v_q_pipe[0] != rx_i_d)
-			       begin
-				  pc <= pc + 2;
-			       end
-			   
-			 endcase
-		      end
+		    
+		    case(mem_q_pipe[0][7 : 0])
+		      
+		      8'h9E:
+			if ( ack_k & (v_q_pipe[0] == rx_i_d) )
+			  begin
+			     pc <= pc + 2;
+			  end
+		      
+		      8'hA1:
+			if ( (v_q_pipe[0] != rx_i_d) | ( (v_q_pipe[0] == rx_i_d) & ~ack_k) )
+			  begin
+			     pc <= pc + 2;
+			  end
+		      
+		    endcase // case (mem_q_pipe[0][7 : 0])
+		    
 		 end
 	       
 	     endcase // case (opcode_pipe[1])
