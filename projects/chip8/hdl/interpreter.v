@@ -59,7 +59,7 @@ module interpreter(
    localparam ADDR_WIDTH = 12;
    
    reg [3 : 0] 			  state = ST_IDLE;
-   reg [3 : 0] 			  opcode = OP_SYS;
+   reg [4 : 0] 			  opcode = OP_SYS;
    reg [4 : 0] 			  state_op = ST_OP_IDLE;
 
    reg [PIPE_LENGTH - 1 : 0] 	  op_en_pipe;
@@ -122,7 +122,35 @@ module interpreter(
 
    wire [7 : 0] 	    sprite_location_q;   
 
-   reg [8 : 0] 		    carry = 0; 		    
+   reg [8 : 0] 		    carry = 0;
+
+   reg 			    ack_k = 0;
+
+   always @ (posedge clk)
+     begin
+	
+	if (state_pipe[1] == ST_RD_U)
+	  begin
+	     if (opcode_pipe[1] == OP_SKP_VX)
+	       begin
+		  if ( (mem_q_pipe[0][7 : 0] == 8'h9E) && (mem_q_pipe[0][7 : 0] == 8'hA1) )
+		    begin
+		       ack_k <= 0;
+		    end
+	       end
+	  end
+	
+	else if ( (state_pipe[2] == ST_RD_U) & (state_op == ST_OP_LD_VX_K) )
+	  begin
+	     ack_k <= 0;
+	  end
+	
+	else if (rx_i_v)
+	  begin
+	     ack_k <= 1;
+	  end
+	
+     end
       
    always @ (state, state_op, draw_raddr, pc, dump_raddr)
      begin
@@ -237,6 +265,9 @@ module interpreter(
 	       OP_SE_VX_VY:
 		 ctr_op <= 2;
 
+	       OP_SKP_VX:
+		 ctr_op <= 5;
+
 	       default:
 		 ctr_op <= 1;
 	       
@@ -314,7 +345,7 @@ module interpreter(
 	  end
 	else if (state_op == ST_OP_LD_VX_K)
 	  begin
-	     ctr_op <= rx_i_v ? 0 : 1;
+	     ctr_op <= (ack_k | rx_i_v) ? 0 : 1;
 	  end
 	else if (ctr_op > 0)
 	  begin
@@ -377,19 +408,23 @@ module interpreter(
 
 	       OP_SKP_VX:
 		 begin
-		    if (rx_i_v)
+		    if (ack_k | rx_i_v)
 		      begin
-			 case(mem_q_pipe[0][3 : 0])
+			 
+			 case(mem_q_pipe[0][7 : 0])
+			   
 			   8'h9E:
 			     if (v_q_pipe[0] == rx_i)
 			       begin
 				  pc <= pc + 2;
 			       end
+			   
 			   8'hA1:
 			     if (v_q_pipe[0] != rx_i)
 			       begin
 				  pc <= pc + 2;
 			       end
+			   
 			 endcase
 		      end
 		 end
@@ -944,7 +979,7 @@ module interpreter(
 	      v_we <= 0;
 
 	    ST_OP_LD_VX_K:
-	      v_we <= rx_i_v;
+	      v_we <= (ack_k | rx_i_v);
 
 	    ST_OP_LD_VX_I:
 	      v_we <= 1;
