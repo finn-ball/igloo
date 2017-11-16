@@ -262,9 +262,6 @@ module interpreter(
 	       OP_RND_VX_BYTE:
 		 ctr_op <= 0;
 
-	       OP_SKP_VX:
-		 ctr_op <= 0;
-	       
 	       OP_SE_VX_VY:
 		 ctr_op <= 2;
 
