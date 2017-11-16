@@ -125,15 +125,18 @@ module interpreter(
    reg [8 : 0] 		    carry = 0;
 
    reg 			    ack_k = 0;
+   reg [7 : 0] 		    rx_i_d = 0;
 
    always @ (posedge clk)
      begin
 	
-	if (state_pipe[2] == ST_RD_U)
+	rx_i_d <= rx_i_v ? rx_i : rx_i_d;
+	
+	if (state_pipe[1] == ST_RD_U)
 	  begin
-	     if (opcode_pipe[2] == OP_SKP_VX)
+	     if (opcode_pipe[1] == OP_SKP_VX)
 	       begin
-		  if ( (mem_q_pipe[1][7 : 0] == 8'h9E) | (mem_q_pipe[1][7 : 0] == 8'hA1) )
+		  if ( (mem_q_pipe[0][7 : 0] == 8'h9E) | (mem_q_pipe[0][7 : 0] == 8'hA1) )
 		    begin
 		       ack_k <= 0;
 		    end
@@ -414,13 +417,13 @@ module interpreter(
 			 case(mem_q_pipe[0][7 : 0])
 			   
 			   8'h9E:
-			     if (v_q_pipe[0] == rx_i)
+			     if (v_q_pipe[0] == rx_i_d)
 			       begin
 				  pc <= pc + 2;
 			       end
 			   
 			   8'hA1:
-			     if (v_q_pipe[0] != rx_i)
+			     if (v_q_pipe[0] != rx_i_d)
 			       begin
 				  pc <= pc + 2;
 			       end
@@ -740,7 +743,7 @@ module interpreter(
 
 	       ST_OP_LD_VX_K:
 		 begin
-		    v_d <= rx_i;
+		    v_d <= rx_i_d;
 		    if (state_pipe[2] == ST_RD_U)
 		      begin
 			 v_waddr <= mem_q_pipe[2][3 : 0];
