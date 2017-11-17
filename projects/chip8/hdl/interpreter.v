@@ -1005,7 +1005,7 @@ module interpreter(
 	      v_we <= 0;
 
 	    ST_OP_LD_VX_K:
-	      v_we <= ack_k;
+	      v_we <= ack_k & ~v_we;
 
 	    ST_OP_LD_VX_I:
 	      v_we <= 1;
@@ -1048,9 +1048,7 @@ module interpreter(
 	.SPRITE_FILE_NAME("projects/chip8/cfg/sprite.hex"),
 	.SPRITE_FILE_WIDTH(80),
 	.PROGRAM_FILE_NAME("projects/chip8/cfg/test.hex"),
-	.PROGRAM_FILE_WIDTH(16)
-	//.PROGRAM_FILE_NAME("projects/chip8/cfg/pong_test.hex"),
-	//.PROGRAM_FILE_WIDTH(256)
+	.PROGRAM_FILE_WIDTH(18)
 	//.PROGRAM_FILE_NAME("projects/chip8/cfg/pong.hex"),
 	//.PROGRAM_FILE_WIDTH(256)
 	) mem (

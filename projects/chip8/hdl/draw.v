@@ -17,6 +17,7 @@ module draw(
    localparam ST_IDLE        = 0;
    localparam ST_DRAW_SCREEN = 1;
    localparam ST_DRAW_VRAM   = 2;
+   localparam ST_DRAW_CLS    = 3;
    
    localparam DATA_WIDTH = 8;
    localparam ADDR_WIDTH = 12;
@@ -79,8 +80,8 @@ module draw(
    assign draw_vram_raddr = { {y} , {x} };
    assign draw_screen_raddr = { {y_screen} , {x_screen} };
    assign mem_raddr = _mem_raddr;
-   assign busy = vs | ~(state_pipe[0] == ST_IDLE)
-		    | ~(state_pipe[1] == ST_IDLE);
+   assign busy = vs | draw_vram
+		    | (state_pipe[1] == ST_DRAW_VRAM);
    
    always @ (posedge clk)
      begin
@@ -149,6 +150,10 @@ endgenerate
 		 begin
 		    state <= ST_DRAW_SCREEN;
 		 end
+	       else if (cls_en)
+		 begin
+		    state <= ST_DRAW_CLS;
+		 end
 	       else if (en)
 		 begin
 		    state <= ST_DRAW_VRAM;
@@ -174,6 +179,19 @@ endgenerate
 		    state <= draw_vram ? ST_DRAW_VRAM : ST_IDLE;
 		 end
 	    end
+
+	  ST_DRAW_CLS:
+	    begin
+	       if (vs)
+		 begin
+		    state <= ST_DRAW_SCREEN;
+		 end
+	       else if (~draw_cls)
+		 begin
+		    state <= draw_vram ? ST_DRAW_VRAM : ST_IDLE;
+		 end
+	    end
+	  
 	endcase
      end // always @ (posedge clk)
    
@@ -214,7 +232,7 @@ endgenerate
    
    always @ (posedge clk)
      begin
-	if (draw_vram)
+	if (state == ST_DRAW_VRAM)
 	  begin
 	     waddr <= draw_vram_raddr;
 	  end
@@ -226,9 +244,21 @@ endgenerate
    
    always @ (posedge clk)
      begin
-	if (state_pipe[1] == ST_DRAW_VRAM)
+	if (draw_cls)
+	  begin
+	     d <= 0;
+	  end
+	else if (state_pipe[1] == ST_DRAW_VRAM)
 	  begin
 	     d[0] <= mem_d_pipe[1][ctr_pix_pipe[1]] ^ q[0];
+	  end
+     end // always @ (posedge clk)
+
+   always @ (posedge clk)
+     begin
+     	if ( (state_pipe[2] == ST_IDLE) | draw_cls )
+	  begin
+	     _col <= 0;
 	  end
 	else if (state_pipe[2] == ST_DRAW_VRAM)
 	  begin
@@ -237,12 +267,8 @@ endgenerate
 		  _col <= 1; // screen pix set to unset = collision
 	       end
 	  end
-	else if ( (state_pipe[2] == ST_IDLE) | draw_cls )
-	  begin
-	     _col <= 0;
-	     d <= 0;
-	  end
      end
+
 
    always @ (posedge clk)
      begin
