@@ -1,6 +1,6 @@
 import os
 import sys
-import ConfigParser
+import configparser
 
 from src.parse_dep import parse_ini
 

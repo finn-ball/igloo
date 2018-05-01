@@ -20,7 +20,6 @@ module draw_screen(
    localparam Y_DIV = Y_PIX / Y_MAX;
    localparam X_DIV_WIDTH = $clog2(X_DIV);
    localparam Y_DIV_WIDTH = $clog2(Y_DIV);
-
    
    reg [X_DIV_WIDTH - 1 : 0] 					x_div_ctr = 0;
    reg [Y_DIV_WIDTH - 1 : 0] 					y_div_ctr = 0;

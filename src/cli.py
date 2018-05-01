@@ -7,7 +7,7 @@ class cli(object):
         parser_sub = self.parser.add_subparsers(dest = 'cmd',
                                                 help = "Type the argument name with --help for more detailed help")
         
-        for cmd,cls in cmds.iteritems():
+        for cmd,cls in cmds.items():
             cls.add_cmd(parser_sub, cmd)
         
         self._cmds = cmds

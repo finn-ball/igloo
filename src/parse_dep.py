@@ -1,7 +1,7 @@
 import os
 import re
 import datetime
-import ConfigParser
+import configparser
 from collections import OrderedDict
 
 class parse_ini(object):
@@ -20,11 +20,11 @@ class parse_ini(object):
         incs_l = []
         root = ""
 
-        for k,v in self.dep_map.iteritems():
+        for k,v in self.dep_map.items():
             file_l.append(k)
             for i in v:
                 if isinstance(i, dict):
-                    for options, j in i.iteritems():
+                    for options, j in i.items():
                         if options == 'includes':
                             for l in j:
                                 incs_l.append(l)
@@ -34,7 +34,7 @@ class parse_ini(object):
         
     def flatten_dep_tree(self, root, section):
         
-        config = ConfigParser.SafeConfigParser()
+        config = configparser.SafeConfigParser()
         ini_path = root + '/cfg/dep.ini'
         if not os.path.exists(ini_path):
             raise Exception('File does not exist: ', ini_path)
@@ -85,7 +85,7 @@ class parse_ini(object):
             
     def parse_makefile(self, ini):
 
-        makefile_config = ConfigParser.ConfigParser()
+        makefile_config = configparser.ConfigParser()
         makefile_config.read(ini)
         
         try:
@@ -114,11 +114,11 @@ class parse_ini(object):
     def create_yosys(self):
 
         yosys =  ''
-        for f, v in self.dep_map.iteritems():
+        for f, v in self.dep_map.items():
             yosys_includes = ''
             for i in v:
                 if isinstance(i, dict):
-                    for options, j in i.iteritems():
+                    for options, j in i.items():
                         if options == 'includes':
                             for l in j:
                                 _root = ''
