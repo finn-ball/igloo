@@ -2,6 +2,8 @@ module mandlebrot(
 		  input 		 clk,
 		  input [WIDTH - 1 : 0]  re_i,
 		  input [WIDTH - 1 : 0]  im_i,
+		  input [WIDTH - 1 : 0]  re_c,
+		  input [WIDTH - 1 : 0]  im_c,
 		  output [WIDTH - 1 : 0] re_o,
 		  output [WIDTH - 1 : 0] im_o,
 		  output 		 escaped,
@@ -10,12 +12,14 @@ module mandlebrot(
 		  );
 
    parameter WIDTH = 8;
-   parameter DIVERGENCE = 1 << WIDTH + 1;
-
+   parameter DIVERGENCE = 1 << 2 * WIDTH;
    localparam MAX_SQUARE = 1 << WIDTH;
+
    localparam VALID_DELAY = 2 * WIDTH + 4;
 
    reg [VALID_DELAY - 1 : 0] 		 valid_pipe = 0;
+   reg signed [WIDTH - 1 : 0] 		 re_c_pipe [WIDTH + 1 : 0];
+   reg signed [WIDTH - 1 : 0] 		 im_c_pipe [WIDTH + 1: 0];
 
    always @(*)
      begin
@@ -52,7 +56,7 @@ module mandlebrot(
      begin
 	x_p_y <= x_signed + y_signed;
 	x_m_y <= x_signed - y_signed;
-	double_x <= re_i << 1;
+	double_x <= re_i << 1; // BUG: Double a negative
 	y_d <= y_signed;
      end
 
@@ -86,10 +90,16 @@ module mandlebrot(
 
    always @(posedge clk)
      begin
-	re_pipe[0] <= re[WIDTH - 1 : 0];
-	im_pipe[0] <= im[WIDTH - 1 : 0];
-	escaped_i[0] <= (im > MAX_SQUARE) || (im < -MAX_SQUARE)
-	             || (re > MAX_SQUARE) || (re < -MAX_SQUARE);
+	re_c_pipe[0] <= re_c;
+	im_c_pipe[0] <= im_c;
+
+	// Check width after addition
+	re_pipe[0] <= re[WIDTH - 1 : 0] + re_c_pipe[WIDTH + 1];
+	im_pipe[0] <= im[WIDTH - 1 : 0] + im_c_pipe[WIDTH + 1];
+	escaped_i[0] <= ((im + im_c_pipe[WIDTH + 1]) > MAX_SQUARE)
+	             || ((im + im_c_pipe[WIDTH + 1]) < -MAX_SQUARE)
+	             || ((re + re_c_pipe[WIDTH + 1]) > MAX_SQUARE)
+                     || ((re + re_c_pipe[WIDTH + 1]) < -MAX_SQUARE);
 	escaped_i[WIDTH : 1] <= escaped_i[WIDTH - 1 : 0];
      end
 
@@ -101,9 +111,18 @@ module mandlebrot(
 	     begin
 		re_pipe[i] <= re_pipe[i - 1];
 		im_pipe[i] <= im_pipe[i - 1];
+
+		re_c_pipe[i] <= re_c_pipe[i - 1];
+		im_c_pipe[i] <= im_c_pipe[i - 1];
 	     end
 	end
    endgenerate
+
+   always @(posedge clk)
+     begin
+	re_c_pipe[WIDTH + 1] <= re_c_pipe[WIDTH];
+	im_c_pipe[WIDTH + 1] <= im_c_pipe[WIDTH];
+     end
 
    assign re_d = re_pipe[0];
    assign im_d = im_pipe[0];
@@ -129,5 +148,23 @@ module mandlebrot(
 			  );
 
    assign escaped = ( (re_squared + im_squared) >  DIVERGENCE ) || escaped_i[WIDTH];
+   // assign escaped = valid_pipe[VALID_DELAY - 1] &&im_squared[2];
+
+   integer 		     k;
+   initial
+     begin
+	$dumpfile("./build/iverilog/mandlebrot.vcd");
+	for (k = 0; k < WIDTH + 1; k = k + 1)
+	  begin
+	     $dumpvars(0, re_pipe[k]);
+	     $dumpvars(0, im_pipe[k]);
+	     $dumpvars(0, im_c_pipe[k]);
+	     $dumpvars(0, re_c_pipe[k]);
+	  end
+	$dumpvars(0, im_c_pipe[10]);
+	$dumpvars(0, re_c_pipe[10]);
+
+     end
+
 
 endmodule

@@ -8,10 +8,12 @@ module mandlebrot_factory(
 
    parameter DATA_WIDTH = 8;
    parameter ADDR_WIDTH = 9;
-   parameter PIPE_WIDTH = 2 * DATA_WIDTH + 3;
+   // parameter PIPE_WIDTH = 2 * DATA_WIDTH + 5;
+   // parameter PIPE_WIDTH = 2 * DATA_WIDTH + 3;
+   parameter PIPE_WIDTH = 2 * DATA_WIDTH + 7;
 
    // localparam MAX_N_IT = 1 << DATA_WIDTH;
-   localparam MAX_N_IT = 3; // remove to be max data width
+   localparam MAX_N_IT = 5; // remove to be max data width
 
    reg 						 we = 0;
    reg [DATA_WIDTH - 1 : 0] 			 iteration_pipe[PIPE_WIDTH - 1 : 0];
@@ -23,11 +25,7 @@ module mandlebrot_factory(
 
    always @(posedge clk)
      begin
-	if (~en)
-	  begin
-	     ctr <= ctr + 1;
-	  end
-	else if ( escaped || (iteration_pipe[PIPE_WIDTH - 1] > MAX_N_IT))
+	if ( ~en || escaped || (iteration_pipe[PIPE_WIDTH - 1] > MAX_N_IT) )
 	  begin
 	     ctr <= ctr + 1;
 	  end
@@ -35,7 +33,7 @@ module mandlebrot_factory(
 
    always @(posedge clk)
      begin
-	if ( escaped || (iteration_pipe[PIPE_WIDTH - 1] > MAX_N_IT) )
+	if ( escaped || (iteration_pipe[PIPE_WIDTH - 2] > (MAX_N_IT - 1)) )
 	  begin
 	     we <= 1;
 	     iteration_pipe[0] <= 0;
@@ -43,19 +41,19 @@ module mandlebrot_factory(
 	else
 	  begin
 	     we <= 0;
-	     iteration_pipe[0] <= en ? iteration_pipe[PIPE_WIDTH - 1] : 0;
+	     iteration_pipe[0] <= en ? iteration_pipe[PIPE_WIDTH - 2] + 1 : 0;
 	  end
      end // always @ (posedge clk)
 
    always @(posedge clk)
      begin
-	if (~en | we)
+	if ( ~en || escaped || (iteration_pipe[PIPE_WIDTH - 2] > MAX_N_IT - 1) )
 	  begin
 	     waddr_pipe[0] <= ctr;
 	  end
 	else
 	  begin
-	     waddr_pipe[0] <= waddr_pipe[PIPE_WIDTH - 1];
+	     waddr_pipe[0] <= waddr_pipe[PIPE_WIDTH - 2];
 	  end
      end
 
@@ -66,48 +64,24 @@ module mandlebrot_factory(
 	   always @(posedge clk)
 	     begin
 		waddr_pipe[i] <= waddr_pipe[i - 1];
+
 		if (i == PIPE_WIDTH - 1)
 		  begin
-		     if (escaped)
-		       begin
-			  iteration_pipe[i] <= iteration_pipe[i - 1];
-		       end
-		     else
-		       begin
-			  iteration_pipe[i] <= iteration_pipe[i - 1] + 1;
-		       end
-		  end // if (i == PIPE_WIDTH - 1)
+		     iteration_pipe[i] <= escaped ? iteration_pipe[i - 1] : iteration_pipe[i - 1] + 1;
+		  end
 		else
 		  begin
 		     iteration_pipe[i] <= iteration_pipe[i - 1];
-		  end // else: !if(i == PIPE_WIDTH - 1)
+		  end
 	     end
 	end
    endgenerate
 
    wire [DATA_WIDTH - 1 : 0] d;
-   reg [ADDR_WIDTH - 1 : 0] waddr;
+   wire [ADDR_WIDTH - 1 : 0] waddr;
+
    assign d = iteration_pipe[PIPE_WIDTH - 1];
-
-   always @(posedge clk)
-     begin
-	waddr <= waddr_pipe[PIPE_WIDTH - 1];
-     end
-
-   /*
-   ram#(
-	.ADDR_WIDTH(ADDR_WIDTH),
-	.DATA_WIDTH(DATA_WIDTH)
-	) memory (
-		  .clk(clk),
-		  .we(we),
-		  .waddr(waddr),
-		  .d(d),
-		  .re(1'b1),
-		  .raddr(raddr),
-		  .q(q)
-		  );
-    */
+   assign waddr = waddr_pipe[PIPE_WIDTH - 1];
 
    dram_512x8#(
 	) memory (
@@ -121,30 +95,59 @@ module mandlebrot_factory(
 		  .q(q)
 		  );
 
+   reg [ADDR_WIDTH - 1 : 0] re_i, re_c;
    wire [ADDR_WIDTH - 1 : 0] re_o;
+   reg [ADDR_WIDTH - 1 : 0]  im_i, im_c;
    wire [ADDR_WIDTH - 1 : 0] im_o;
+
+   reg 			     valid_i;
+
+   always @(*)
+     begin
+	if (~en ||~escaped)
+	  begin
+	     re_i <= 0;
+	     im_i <= 0;
+	     re_c <= waddr_pipe[0];
+	     im_c <= waddr_pipe[0];
+	  end
+	else
+	  begin
+	     re_i <= re_o;
+	     im_i <= im_o;
+	     re_c <= waddr_pipe[0];
+	     im_c <= waddr_pipe[0];
+	  end
+     end // always @ (*)
+
+   always @(posedge clk)
+     begin
+	valid_i <= 1'b1;
+     end
 
    mandlebrot#(
 	       .WIDTH(ADDR_WIDTH)
 	       ) mandle(
 			.clk(clk),
-			.re_i(ctr),
-			.im_i(ctr),
+			.re_i(re_i),
+			.im_i(im_i),
+			.re_c(re_c),
+			.im_c(im_c),
 			.re_o(re_o),
 			.im_o(im_o),
 			.escaped(escaped),
-			.valid_i(1'b1),
+			.valid_i(valid_i),
 			.valid_o(en)
 			);
 
-   integer 		     j;
+   integer 		     k;
    initial
      begin
 	$dumpfile("./build/iverilog/mandlebrot.vcd");
-	for (j = 0; j < PIPE_WIDTH; j = j + 1)
+	for (k = 0; k < PIPE_WIDTH; k = k + 1)
 	  begin
-	     $dumpvars(0, iteration_pipe[j]);
-	     $dumpvars(0, waddr_pipe[j]);
+	     $dumpvars(0, iteration_pipe[k]);
+	     $dumpvars(0, waddr_pipe[k]);
 	  end
      end
 
